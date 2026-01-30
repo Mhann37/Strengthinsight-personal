@@ -50,7 +50,7 @@ export const processWorkoutScreenshots = async (images: { base64: string, timest
   const metadataContext = images.map((img, i) => `Image ${i+1} was taken at: ${new Date(img.timestamp).toISOString()}`).join('\n');
 
   const prompt = `
-    Analyze these Whoop Strength Trainer screenshots. 
+    Analyze these Whoop Strength Trainer screenshot. 
     
     METADATA CONTEXT:
     ${metadataContext}
