@@ -44,7 +44,7 @@ const WORKOUT_SCHEMA = {
 
 export const processWorkoutScreenshots = async (images: { base64: string, timestamp: number }[]): Promise<Workout[]> => {
   // Use gemini-3-pro-preview for complex reasoning tasks like parsing structured workout data from multiple screenshots.
-  const model = 'gemini-1.5-flash';
+  const model = 'gemini-3-pro-preview';
   
   // Format timestamps for the prompt
   const metadataContext = images.map((img, i) => `Image ${i+1} was taken at: ${new Date(img.timestamp).toISOString()}`).join('\n');
@@ -56,7 +56,7 @@ export const processWorkoutScreenshots = async (images: { base64: string, timest
     ${metadataContext}
 
     INSTRUCTIONS:
-    1. Extract all exercises, sets, reps, and weights from all images provided.
+    1. Extract all exercises, sets, reps, and weights from all images.
     2. Group exercises into workouts based on their dates. 
     3. Use the provided metadata timestamps as the primary source for the "workoutDate".
     4. If multiple screenshots have timestamps within a few hours of each other, they belong to the SAME workout.

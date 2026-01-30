@@ -10,9 +10,9 @@ import { getFirestore } from "firebase/firestore";
 // 4. Copy the config object below
 const firebaseConfig = {
   apiKey: "YOUR_API_KEY_HERE",
-  authDomain: "your-project.firebaseapp.com",
-  projectId: "your-project-id",
-  storageBucket: "your-project.appspot.com",
+  authDomain: "strength-insight.vercel.app",
+  projectId: "gen-lang-client-0337514261",
+  storageBucket: "strength-insight.vercel.app",
   messagingSenderId: "123456789",
   appId: "1:123456789:web:..."
 };
