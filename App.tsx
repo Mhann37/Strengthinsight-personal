@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { AppView, Workout } from './types';
 import Dashboard from './components/Dashboard';
