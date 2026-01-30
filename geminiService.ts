@@ -44,7 +44,7 @@ const WORKOUT_SCHEMA = {
 
 export const processWorkoutScreenshots = async (images: { base64: string, timestamp: number }[]): Promise<Workout[]> => {
   // Use gemini-3-pro-preview for complex reasoning tasks like parsing structured workout data from multiple screenshots.
-  const model = 'gemini-3-pro-preview';
+  const model = 'gemini-1.5-flash';
   
   // Format timestamps for the prompt
   const metadataContext = images.map((img, i) => `Image ${i+1} was taken at: ${new Date(img.timestamp).toISOString()}`).join('\n');
