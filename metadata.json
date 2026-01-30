@@ -1,0 +1,7 @@
+{
+  "name": "StrengthInsight - Whoop Companion",
+  "description": "A powerful companion app for Whoop Strength Trainer. Upload workout screenshots to automatically track reps, sets, and progress with AI-driven vision analysis and visual heatmaps.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
