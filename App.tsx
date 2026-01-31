@@ -1,12 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged, User, signOut } from 'firebase/auth';
 import { 
   collection, 
   addDoc, 
-  getDocs, 
   query, 
   where, 
-  orderBy, 
   deleteDoc, 
   doc, 
   onSnapshot 
@@ -38,12 +36,12 @@ const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
 
-  // 1. Auth Observer & Data Sync
+  // 1. Auth Observer
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setLoading(false);
-      
+      console.log("Auth State Changed:", currentUser ? `Logged in as ${currentUser.uid}` : "Logged out");
       if (!currentUser) {
         setWorkouts([]);
       }
@@ -51,66 +49,94 @@ const App: React.FC = () => {
     return () => unsubscribeAuth();
   }, []);
 
-  // 2. Real-time Firestore Sync (Isolated by userId)
+  // 2. Real-time Firestore Sync
   useEffect(() => {
     if (!user) return;
 
     setDataLoading(true);
     const workoutsRef = collection(db, 'workouts');
+    
+    // Simple query to avoid composite index requirements
     const q = query(
       workoutsRef, 
-      where('userId', '==', user.uid),
-      orderBy('date', 'desc')
+      where('userId', '==', user.uid)
     );
 
+    console.log(`Starting Firestore sync for user: ${user.uid}`);
+
     const unsubscribeWorkouts = onSnapshot(q, (snapshot) => {
+      console.log(`Firestore Sync: Received ${snapshot.docs.length} documents`);
+      
       const fetchedWorkouts = snapshot.docs.map(doc => ({
         ...doc.data(),
         id: doc.id
       })) as Workout[];
-      setWorkouts(fetchedWorkouts);
+      
+      // Sort client-side by date descending
+      const sorted = fetchedWorkouts.sort((a, b) => {
+        const dateA = new Date(a.date || 0).getTime();
+        const dateB = new Date(b.date || 0).getTime();
+        return dateB - dateA;
+      });
+      
+      setWorkouts(sorted);
       setDataLoading(false);
     }, (error) => {
-      console.error("Firestore Error:", error);
+      console.error("Firestore Subscription Error:", error);
+      alert(`Database sync error: ${error.message}. Please check your Firebase Security Rules.`);
       setDataLoading(false);
     });
 
     return () => unsubscribeWorkouts();
   }, [user]);
 
-  // 3. Save Workout to Firestore
+  // 3. Save Workout
   const addWorkouts = async (newWorkouts: Workout[]) => {
-    if (!auth.currentUser) return;
+    if (!auth.currentUser) {
+      alert("You must be logged in to save data.");
+      return;
+    }
+
+    if (newWorkouts.length === 0) return;
+
+    console.log(`Attempting to save ${newWorkouts.length} workouts to Firestore...`);
 
     try {
       const workoutsRef = collection(db, 'workouts');
       const savePromises = newWorkouts.map(workout => {
-        // Strip the temporary ID from geminiService and add userId
+        // Strip frontend-only ID if it exists to let Firestore generate one
         const { id, ...data } = workout; 
-        return addDoc(workoutsRef, {
+        
+        const payload = {
           ...data,
           userId: auth.currentUser!.uid,
-          createdAt: new Date().toISOString()
-        });
+          updatedAt: new Date().toISOString()
+        };
+        
+        console.debug("Saving payload:", payload);
+        return addDoc(workoutsRef, payload);
       });
 
       await Promise.all(savePromises);
+      console.log("Successfully saved all workouts to Firestore.");
       setView('dashboard');
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving workouts:", error);
-      alert("Failed to save workouts to cloud storage.");
+      alert(`Failed to sync data to the cloud: ${error.message}. Ensure your database rules allow writes.`);
     }
   };
 
-  // 4. Delete Workout from Firestore
+  // 4. Delete Workout
   const deleteWorkout = async (id: string) => {
     if (!auth.currentUser) return;
+    if (!confirm("Are you sure you want to delete this workout?")) return;
 
     try {
       await deleteDoc(doc(db, 'workouts', id));
-    } catch (error) {
+      console.log(`Successfully deleted workout document: ${id}`);
+    } catch (error: any) {
       console.error("Error deleting workout:", error);
-      alert("Failed to delete workout.");
+      alert(`Failed to delete record: ${error.message}`);
     }
   };
 
@@ -213,8 +239,9 @@ const App: React.FC = () => {
       <main className="flex-1 overflow-y-auto p-4 lg:p-10 pt-20 lg:pt-10">
         <div className="max-w-6xl mx-auto">
           {dataLoading && workouts.length === 0 ? (
-            <div className="flex items-center justify-center py-20">
+            <div className="flex flex-col items-center justify-center py-20 space-y-4">
               <div className="w-8 h-8 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin"></div>
+              <p className="text-slate-500 text-sm font-medium">Syncing Cloud Records...</p>
             </div>
           ) : (
             <>

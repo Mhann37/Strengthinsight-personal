@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { processWorkoutScreenshots } from '../geminiService';
 import { Workout, Exercise, SetRecord } from '../types';
@@ -32,6 +31,7 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
   const [selectedPlatform, setSelectedPlatform] = useState<Platform>(null);
   const [selectedFiles, setSelectedFiles] = useState<FileWithPreview[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pendingWorkouts, setPendingWorkouts] = useState<Workout[] | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -79,8 +79,12 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
   const handleUpdateWorkoutDate = (wIdx: number, newDate: string) => {
     if (!pendingWorkouts) return;
     const updated = [...pendingWorkouts];
-    updated[wIdx].date = newDate;
-    setPendingWorkouts(updated);
+    try {
+      updated[wIdx].date = new Date(newDate).toISOString();
+      setPendingWorkouts(updated);
+    } catch (e) {
+      console.warn("Invalid date format entered");
+    }
   };
 
   const handleUpdateExerciseName = (wIdx: number, eIdx: number, newName: string) => {
@@ -126,21 +130,27 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
     setPendingWorkouts(updated);
   };
 
-  const confirmUpload = () => {
-    if (!pendingWorkouts) return;
-    const finalized = pendingWorkouts.map(w => ({
-      ...w,
-      totalVolume: w.exercises.reduce((acc, ex) => 
-        acc + ex.sets.reduce((sAcc, s) => sAcc + (s.reps * s.weight), 0)
-      , 0)
-    }));
-    onWorkoutsExtracted(finalized);
-    setPendingWorkouts(null);
-    setSelectedFiles([]);
-    setSelectedPlatform(null);
+  const confirmUpload = async () => {
+    if (!pendingWorkouts || isSaving) return;
+    setIsSaving(true);
+    try {
+      const finalized = pendingWorkouts.map(w => ({
+        ...w,
+        totalVolume: w.exercises.reduce((acc, ex) => 
+          acc + ex.sets.reduce((sAcc, s) => sAcc + (s.reps * s.weight), 0)
+        , 0)
+      }));
+      await onWorkoutsExtracted(finalized);
+      setPendingWorkouts(null);
+      setSelectedFiles([]);
+      setSelectedPlatform(null);
+    } catch (err) {
+      alert("Error confirming data. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  // 1. Platform Selection View
   if (!selectedPlatform) {
     return (
       <div className="max-w-4xl mx-auto space-y-12 animate-fadeIn py-12">
@@ -155,7 +165,6 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Whoop Option */}
           <button 
             onClick={() => setSelectedPlatform('whoop')}
             className="group relative bg-slate-900 border-2 border-slate-800 p-8 rounded-[2.5rem] text-left transition-all hover:border-blue-500/50 hover:bg-slate-800/50 hover:shadow-2xl hover:shadow-blue-500/10 active:scale-[0.98]"
@@ -172,7 +181,6 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
             </p>
           </button>
 
-          {/* Garmin Option (Greyed Out) */}
           <div className="relative bg-slate-900/40 border-2 border-slate-800/50 p-8 rounded-[2.5rem] text-left opacity-60 cursor-not-allowed overflow-hidden">
             <div className="absolute top-4 right-4 bg-slate-800 text-slate-500 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest border border-slate-700">
               Coming Soon
@@ -200,10 +208,9 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
     );
   }
 
-  // 2. Pending Verification View
   if (pendingWorkouts) {
     return (
-      <div className="max-w-4xl mx-auto space-y-8 animate-fadeIn">
+      <div className="max-w-4xl mx-auto space-y-8 animate-fadeIn pb-20">
         <header className="text-center">
           <h1 className="text-3xl font-bold mb-2">Verify Data</h1>
           <p className="text-slate-400">Gemini extracted the following. Please amend any errors before saving.</p>
@@ -221,8 +228,8 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
                     <label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest block mb-1">Workout Date</label>
                     <input 
                       type="datetime-local" 
-                      value={new Date(workout.date).toISOString().slice(0, 16)}
-                      onChange={(e) => handleUpdateWorkoutDate(wIdx, new Date(e.target.value).toISOString())}
+                      defaultValue={new Date(workout.date).toISOString().slice(0, 16)}
+                      onChange={(e) => handleUpdateWorkoutDate(wIdx, e.target.value)}
                       className="bg-transparent border-b border-slate-700 font-bold text-white outline-none focus:border-blue-500 transition-colors"
                     />
                   </div>
@@ -302,26 +309,31 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
           ))}
         </div>
 
-        <div className="sticky bottom-8 flex space-x-4 pt-8">
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 w-full max-w-4xl px-4 flex space-x-4 z-30">
           <button 
+            disabled={isSaving}
             onClick={() => setPendingWorkouts(null)}
-            className="flex-1 bg-slate-800 text-white py-4 rounded-2xl font-bold hover:bg-slate-700 transition-all"
+            className="flex-1 bg-slate-800 text-white py-4 rounded-2xl font-bold hover:bg-slate-700 transition-all disabled:opacity-50"
           >
-            Discard & Restart
+            Discard
           </button>
           <button 
+            disabled={isSaving}
             onClick={confirmUpload}
-            className="flex-[2] bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-xl shadow-blue-900/40 hover:bg-blue-500 transition-all flex items-center justify-center space-x-3"
+            className="flex-[2] bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-xl shadow-blue-900/40 hover:bg-blue-500 transition-all flex items-center justify-center space-x-3 disabled:opacity-50"
           >
-            <CheckCircleIcon className="w-6 h-6" />
-            <span>Confirm & Save Workouts</span>
+            {isSaving ? (
+              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+            ) : (
+              <CheckCircleIcon className="w-6 h-6" />
+            )}
+            <span>{isSaving ? 'Syncing to Cloud...' : 'Confirm & Save Workouts'}</span>
           </button>
         </div>
       </div>
     );
   }
 
-  // 3. Main Upload View (after platform selected)
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-fadeIn">
       <header className="flex items-center justify-between">

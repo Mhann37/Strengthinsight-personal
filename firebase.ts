@@ -1,22 +1,38 @@
 
-// Fix: Import initializeApp from 'firebase/app' using consistent named exports
+// Modular Firebase initialization for v9+
+// Correcting imports to ensure they resolve properly in environments experiencing "no exported member" errors.
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
-// Using import.meta.env as requested for Vite/Vercel environments.
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID
+/**
+ * Robust environment variable accessor.
+ * Supports standard process.env (Node/System) and import.meta.env (Vite).
+ */
+const getEnv = (key: string): string | undefined => {
+  // @ts-ignore - Handle environments where process might not be defined
+  const env = (typeof process !== 'undefined' && process.env) || (import.meta as any).env || {};
+  return env[key];
 };
 
-// Initialize Firebase
-// Standard modular initialization for Firebase JS SDK v9+
+const firebaseConfig = {
+  apiKey: getEnv('VITE_FIREBASE_API_KEY'),
+  authDomain: getEnv('VITE_FIREBASE_AUTH_DOMAIN'),
+  projectId: getEnv('VITE_FIREBASE_PROJECT_ID'),
+  storageBucket: getEnv('VITE_FIREBASE_STORAGE_BUCKET'),
+  messagingSenderId: getEnv('VITE_FIREBASE_MESSAGING_SENDER_ID'),
+  appId: getEnv('VITE_FIREBASE_APP_ID')
+};
+
+// Log for debugging (only in development if needed)
+if (!firebaseConfig.apiKey) {
+  console.warn("Firebase API Key is missing. Check your environment variables.");
+}
+
+// Initialize the Firebase app instance
 const app = initializeApp(firebaseConfig);
+
+// Export service instances for use throughout the application
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();

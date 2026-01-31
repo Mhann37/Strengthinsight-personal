@@ -1,10 +1,9 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
 import { Workout, Exercise, SetRecord } from "./types";
 
-// Always use the process.env.API_KEY directly as per guidelines.
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
+// Always use Type.OBJECT with propertyOrdering and avoid empty objects.
+// Removed enum as it's not explicitly supported in the provided Type enum; used description instead.
 const WORKOUT_SCHEMA = {
   type: Type.ARRAY,
   items: {
@@ -28,21 +27,27 @@ const WORKOUT_SCHEMA = {
                   setNumber: { type: Type.INTEGER },
                   reps: { type: Type.INTEGER },
                   weight: { type: Type.NUMBER },
-                  unit: { type: Type.STRING, enum: ["kg", "lbs"] }
+                  unit: { type: Type.STRING, description: "The unit of weight, either 'kg' or 'lbs'." }
                 },
-                required: ["setNumber", "reps", "weight", "unit"]
+                required: ["setNumber", "reps", "weight", "unit"],
+                propertyOrdering: ["setNumber", "reps", "weight", "unit"]
               }
             }
           },
-          required: ["name", "sets"]
+          required: ["name", "sets"],
+          propertyOrdering: ["name", "sets"]
         }
       }
     },
-    required: ["workoutDate", "exercises"]
+    required: ["workoutDate", "exercises"],
+    propertyOrdering: ["workoutDate", "exercises"]
   }
 };
 
 export const processWorkoutScreenshots = async (images: { base64: string, timestamp: number }[]): Promise<Workout[]> => {
+  // CRITICAL: Create a new GoogleGenAI instance right before making an API call to ensure it uses the most up-to-date API key from the environment/dialog.
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
   // Use gemini-3-pro-preview for complex reasoning tasks like parsing structured workout data from multiple screenshots.
   const model = 'gemini-3-pro-preview';
   
@@ -74,7 +79,7 @@ export const processWorkoutScreenshots = async (images: { base64: string, timest
     }));
 
     // Use ai.models.generateContent with a content object containing parts as per current SDK guidelines.
-    const response = await ai.models.generateContent({
+    const response: GenerateContentResponse = await ai.models.generateContent({
       model,
       contents: {
         parts: [

@@ -1,4 +1,3 @@
-
 import React, { useRef, useEffect, useState } from 'react';
 import { Workout } from '../types';
 import { MagnifyingGlassPlusIcon, MagnifyingGlassMinusIcon } from '@heroicons/react/24/outline';
@@ -35,7 +34,9 @@ const WeeklyHeatMap: React.FC<WeeklyHeatMapProps> = ({ workouts }) => {
     
     // Find all workouts on this day
     workouts.forEach(workout => {
-      if (workout.date.split('T')[0] === dayStr) {
+      if (!workout.date) return;
+      const workoutDayStr = workout.date.split('T')[0];
+      if (workoutDayStr === dayStr) {
         workout.exercises.forEach(ex => {
           if (!exerciseByDay[dayStr].includes(ex.name)) {
             exerciseByDay[dayStr].push(ex.name);
@@ -99,7 +100,7 @@ const WeeklyHeatMap: React.FC<WeeklyHeatMapProps> = ({ workouts }) => {
               </div>
               
               <div className="flex-1 space-y-1.5 min-h-[200px]">
-                {exercises.length > 0 ? (
+                {exercises && exercises.length > 0 ? (
                   exercises.map((name, idx) => (
                     <div 
                       key={idx} 
