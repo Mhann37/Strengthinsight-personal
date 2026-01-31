@@ -17,11 +17,8 @@ const getEnv = (key: string): string | undefined => {
 
 const API_KEY = getEnv('API_KEY');
 
-if (!API_KEY) {
-  console.warn("Gemini API Key is missing. Ensure VITE_API_KEY or REACT_APP_API_KEY is set in your environment.");
-}
-
-// Initialize the client directly
+// Initialize the client directly. Note: We use a placeholder if missing to allow the app to load,
+// but specific calls will fail/validate.
 const ai = new GoogleGenAI({ apiKey: API_KEY || 'MISSING_KEY' });
 
 // Schema definition matching the frontend types
@@ -71,6 +68,10 @@ const WORKOUT_SCHEMA = {
 } as const;
 
 export const processWorkoutScreenshots = async (images: { base64: string, timestamp: number }[]): Promise<Workout[]> => {
+  if (!API_KEY) {
+    throw new Error("API Key is missing. Please check your environment variables (e.g., .env file with REACT_APP_API_KEY or VITE_API_KEY).");
+  }
+
   try {
     const model = "gemini-3-pro-preview";
 

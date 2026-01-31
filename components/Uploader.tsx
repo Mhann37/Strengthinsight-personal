@@ -72,9 +72,24 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
       }));
       const extractedWorkouts = await processWorkoutScreenshots(imagesData);
       setPendingWorkouts(extractedWorkouts);
-    } catch (err) {
-      setError("Failed to extract data. Please ensure the screenshots are clear.");
+    } catch (err: any) {
       console.error(err);
+      let msg = "Failed to extract data. Please ensure the screenshots are clear.";
+      
+      // Improve error reporting for common issues
+      if (err.message) {
+        if (err.message.includes("API Key")) {
+          msg = "Configuration Error: " + err.message;
+        } else if (err.message.includes("403")) {
+          msg = "API Access Denied. Please check your API Key restrictions in Google Cloud Console.";
+        } else if (err.message.includes("400")) {
+          msg = "Bad Request. The images might be too large or the format unsupported.";
+        } else if (err.message.includes("fetch")) {
+          msg = "Network Error. Please check your internet connection.";
+        }
+      }
+      
+      setError(msg);
     } finally {
       setIsProcessing(false);
     }
@@ -410,6 +425,13 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
           </>
         )}
       </div>
+
+      {error && (
+        <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center space-x-3 text-red-400 animate-pulse">
+           <ExclamationCircleIcon className="w-5 h-5 shrink-0" />
+           <span className="text-sm font-medium">{error}</span>
+        </div>
+      )}
 
       <button
         onClick={handleProcess}
