@@ -43,7 +43,7 @@ const MuscleGroups: React.FC<{ workouts: Workout[] }> = ({ workouts }) => {
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - timeframe);
 
-    workouts.filter(w => new Date(w.date) >= cutoff).forEach(w => {
+    workouts.filter(w => new Date(w.date).getTime() >= cutoff.getTime()).forEach(w => {
       w.exercises.forEach(ex => {
         const group = getMuscleGroup(ex);
         if (group === 'Other') return;
@@ -60,7 +60,7 @@ const MuscleGroups: React.FC<{ workouts: Workout[] }> = ({ workouts }) => {
     return { load, peaks };
   }, [workouts, timeframe]);
 
-  const maxVolume = Math.max(...Object.values(stats.load), 1);
+  const maxVolume = Math.max(...(Object.values(stats.load) as number[]), 1);
 
   const getIntensityColor = (group: string) => {
     const volume = stats.load[group] || 0;
@@ -71,7 +71,7 @@ const MuscleGroups: React.FC<{ workouts: Workout[] }> = ({ workouts }) => {
     return 'fill-orange-500';
   };
 
-  const topMuscle = Object.entries(stats.load).sort((a,b)=>b[1]-a[1])[0];
+  const topMuscle = (Object.entries(stats.load) as [string, number][]).sort((a,b)=>b[1]-a[1])[0];
 
   return (
     <div className="space-y-8 animate-fadeIn pb-20">

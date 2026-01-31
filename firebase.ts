@@ -1,26 +1,12 @@
+
 // Modular Firebase initialization with LocalStorage fallback for offline-first resilience
-// Using standard Firebase v9 modular SDK imports
-import { initializeApp } from "firebase/app";
-import { 
-  getAuth, 
-  GoogleAuthProvider, 
-  Auth, 
-  onAuthStateChanged as fbOnAuthStateChanged,
-  signOut as fbSignOut,
-  signInWithPopup as fbSignInWithPopup,
-  User
-} from "firebase/auth";
-import { 
-  getFirestore, 
-  Firestore, 
-  collection as fbCollection,
-  addDoc as fbAddDoc,
-  deleteDoc as fbDeleteDoc,
-  doc as fbDoc,
-  onSnapshot as fbOnSnapshot,
-  query as fbQuery,
-  where as fbWhere
-} from "firebase/firestore";
+// Rewritten to use firebase/compat imports to resolve typescript module errors
+// while maintaining v9-compatible exports for the app consumption.
+
+import firebase from "firebase/compat/app";
+import "firebase/compat/auth";
+import "firebase/compat/firestore";
+import "firebase/compat/functions";
 
 const getEnv = (key: string): string | undefined => {
   // @ts-ignore
@@ -40,16 +26,21 @@ const config = {
 // Check if we have a valid configuration
 const isConfigValid = config.apiKey && config.apiKey !== 'undefined' && config.apiKey.length > 10;
 
-let app: any;
-let auth: any;
-let db: any;
+let app: firebase.app.App;
+let auth: firebase.auth.Auth;
+let db: firebase.firestore.Firestore;
+let functions: firebase.functions.Functions;
 
 if (isConfigValid) {
   try {
-    // initializeApp is the standard entry point for Firebase modular SDK
-    app = initializeApp(config);
-    auth = getAuth(app);
-    db = getFirestore(app);
+    if (!firebase.apps.length) {
+      app = firebase.initializeApp(config);
+    } else {
+      app = firebase.apps[0];
+    }
+    auth = firebase.auth();
+    db = firebase.firestore();
+    functions = firebase.functions();
   } catch (e) {
     console.error("Firebase initialization failed, falling back to Mock mode", e);
     setupMocks();
@@ -61,7 +52,7 @@ if (isConfigValid) {
 
 function setupMocks() {
   // Mock User Object
-  const mockUser: User = {
+  const mockUser = {
     uid: 'local-user-123',
     displayName: 'Local Athlete',
     email: 'offline@strengthinsight.local',
@@ -77,67 +68,80 @@ function setupMocks() {
     getIdTokenResult: async () => ({}) as any,
     reload: async () => {},
     toJSON: () => ({})
-  } as any;
+  } as unknown as firebase.User;
 
   // Mock Auth
   auth = {
     currentUser: mockUser,
-  };
+  } as any;
 
   // Mock DB (using LocalStorage)
-  db = { isMock: true };
+  db = { isMock: true } as any;
+  
+  // Mock Functions
+  functions = { isMock: true } as any;
 }
 
-export { auth, db };
-export const googleProvider = new GoogleAuthProvider();
+export { auth, db, functions };
+export const googleProvider = new firebase.auth.GoogleAuthProvider();
 
-// Standardized wrappers to handle both Real Firebase and Mock Persistence
+// Type Export
+export type User = firebase.User;
+
+// Standardized wrappers to handle both Real Firebase (v8 adapt to v9) and Mock Persistence
 export const onAuthStateChanged = (authObj: any, callback: (user: User | null) => void) => {
-  if (db.isMock) {
+  if ((db as any).isMock) {
     // Simulate async auth load
     setTimeout(() => callback(authObj.currentUser), 500);
     return () => {};
   }
-  return fbOnAuthStateChanged(authObj, callback);
+  return authObj.onAuthStateChanged(callback);
 };
 
 export const signOut = (authObj: any) => {
-  if (db.isMock) {
+  if ((db as any).isMock) {
     authObj.currentUser = null;
     window.location.reload(); // Hard reset for mock
     return Promise.resolve();
   }
-  return fbSignOut(authObj);
+  return authObj.signOut();
 };
 
 export const signInWithPopup = (authObj: any, provider: any) => {
-  if (db.isMock) {
+  if ((db as any).isMock) {
     setupMocks(); // Re-initialize
     window.location.reload();
     return Promise.resolve();
   }
-  return fbSignInWithPopup(authObj, provider);
+  return authObj.signInWithPopup(provider);
 };
 
-// Firestore Mocks/Wrappers
+// Firestore Mocks/Wrappers for v9 compat
 export const collection = (dbObj: any, path: string) => {
-  if (dbObj.isMock) return { path, isMock: true };
-  return fbCollection(dbObj, path);
+  if ((dbObj as any).isMock) return { path, isMock: true };
+  return dbObj.collection(path);
 };
 
 export const doc = (dbObj: any, path: string, id: string) => {
-  if (dbObj.isMock) return { path, id, isMock: true };
-  return fbDoc(dbObj, path, id);
+  if ((dbObj as any).isMock) return { path, id, isMock: true };
+  // Handle doc(db, collection, id) usage
+  return dbObj.collection(path).doc(id);
 };
 
 export const query = (col: any, ...constraints: any[]) => {
   if (col.isMock) return col;
-  return fbQuery(col, ...constraints);
+  
+  let q = col;
+  constraints.forEach(c => {
+    if (c.type === 'where') {
+      q = q.where(c.field, c.op, c.val);
+    }
+  });
+  return q;
 };
 
 export const where = (field: string, op: string, val: any) => {
-  if (typeof fbWhere === 'function') return fbWhere(field, op as any, val);
-  return { field, op, val };
+  return { type: 'where', field, op, val };
 };
 
 export const onSnapshot = (q: any, callback: (snapshot: any) => void, errorCallback?: (error: any) => void) => {
@@ -155,7 +159,7 @@ export const onSnapshot = (q: any, callback: (snapshot: any) => void, errorCallb
     window.addEventListener('storage', load);
     return () => window.removeEventListener('storage', load);
   }
-  return fbOnSnapshot(q, callback, errorCallback);
+  return q.onSnapshot(callback, errorCallback);
 };
 
 export const addDoc = (col: any, data: any) => {
@@ -166,7 +170,7 @@ export const addDoc = (col: any, data: any) => {
     window.dispatchEvent(new Event('storage')); // Trigger listeners
     return Promise.resolve(newDoc);
   }
-  return fbAddDoc(col, data);
+  return col.add(data);
 };
 
 export const deleteDoc = (docRef: any) => {
@@ -177,5 +181,15 @@ export const deleteDoc = (docRef: any) => {
     window.dispatchEvent(new Event('storage'));
     return Promise.resolve();
   }
-  return fbDeleteDoc(docRef);
+  return docRef.delete();
+};
+
+export const httpsCallable = (functionsInstance: any, name: string) => {
+  if ((functionsInstance as any).isMock) {
+    return async (data: any) => {
+      console.warn("Mock Function Call:", name, data);
+      throw new Error("Functions not available in mock mode. Configure Firebase.");
+    };
+  }
+  return functionsInstance.httpsCallable(name);
 };
