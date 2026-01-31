@@ -14,7 +14,10 @@ const WORKOUT_SCHEMA = {
           type: Type.OBJECT,
           properties: {
             name: { type: Type.STRING },
-            muscleGroup: { type: Type.STRING, description: "One of: Chest, Back, Shoulders, Arms, Legs, Core" },
+            muscleGroup: { 
+              type: Type.STRING, 
+              description: "MUST be exactly one of: Chest, Back, Shoulders, Arms, Legs, or Core." 
+            },
             sets: {
               type: Type.ARRAY,
               items: {
@@ -41,38 +44,52 @@ const WORKOUT_SCHEMA = {
 };
 
 export const processWorkoutScreenshots = async (images: { base64: string, timestamp: number }[]): Promise<Workout[]> => {
-  // Always initialize a new GoogleGenAI instance right before the call to ensure the latest API key is used
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  // Using gemini-3-flash-preview for general multimodal extraction and reasoning tasks
   const model = 'gemini-3-flash-preview';
-  const metadata = images.map((img, i) => `Image ${i+1}: ${new Date(img.timestamp).toISOString()}`).join('\n');
+  
+  const prompt = `Analyze these Whoop Strength Trainer screenshots. 
+Extract every exercise, set, and rep. 
+CRITICAL: Categorize EVERY exercise into one of these 6 groups:
+- Chest (e.g., Bench Press, Flyes, Pushups)
+- Back (e.g., Rows, Pullups, Lat Pulldowns)
+- Shoulders (e.g., Overhead Press, Lateral Raises, Face Pulls)
+- Arms (e.g., Biceps Curls, Triceps Extensions, Hammer Curls)
+- Legs (e.g., Squats, Deadlifts, Lunges, Calves)
+- Core (e.g., Planks, Crunches, Leg Raises)
 
-  const prompt = `Analyze these Whoop screenshots. Map each exercise to: Chest, Back, Shoulders, Arms, Legs, or Core.\nMetadata:\n${metadata}`;
+If an exercise is compound, pick the primary driver.
+Return a JSON array matching the provided schema.`;
 
   try {
-    const parts = [{ text: prompt }, ...images.map(img => ({
-      inlineData: { mimeType: 'image/png', data: img.base64.split(',')[1] || img.base64 }
-    }))];
+    const parts = [
+      { text: prompt }, 
+      ...images.map(img => ({
+        inlineData: { mimeType: 'image/png', data: img.base64.split(',')[1] || img.base64 }
+      }))
+    ];
 
     const response: GenerateContentResponse = await ai.models.generateContent({
       model,
       contents: { parts },
-      config: { responseMimeType: "application/json", responseSchema: WORKOUT_SCHEMA }
+      config: { 
+        responseMimeType: "application/json", 
+        responseSchema: WORKOUT_SCHEMA,
+        temperature: 0.1 // Keep it deterministic for classification
+      }
     });
 
-    // Directly access the .text property as per the latest SDK guidelines
     const text = response.text || '[]';
     const results = JSON.parse(text);
     
     return results.map((r: any, idx: number) => ({
       id: `w-${Date.now()}-${idx}`,
-      date: r.workoutDate,
+      date: r.workoutDate || new Date().toISOString(),
       exercises: r.exercises,
       totalVolume: r.exercises.reduce((acc: number, ex: any) => 
-        acc + ex.sets.reduce((sAcc: number, s: any) => sAcc + (s.reps * s.weight), 0), 0)
+        acc + ex.sets.reduce((sAcc: number, s: any) => sAcc + (s.reps * (s.weight || 0)), 0), 0)
     }));
   } catch (error) {
-    console.error("Gemini Error:", error);
+    console.error("Gemini Extraction Error:", error);
     throw error;
   }
 };

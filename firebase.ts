@@ -1,6 +1,5 @@
-
 // Modular Firebase initialization with LocalStorage fallback for offline-first resilience
-// Removed unused FirebaseApp to resolve potential export missing error in specific environments
+// Using standard Firebase v9 modular SDK imports
 import { initializeApp } from "firebase/app";
 import { 
   getAuth, 

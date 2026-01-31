@@ -1,38 +1,69 @@
 
 import React, { useMemo, useState } from 'react';
-import { Workout } from '../types';
+import { Workout, Exercise } from '../types';
 import { 
   UserIcon, 
   BoltIcon, 
   ChartBarIcon, 
-  InformationCircleIcon 
+  InformationCircleIcon,
+  TrophyIcon
 } from '@heroicons/react/24/outline';
 
 const MUSCLE_GROUPS = ['Chest', 'Back', 'Shoulders', 'Arms', 'Legs', 'Core'];
 
+/**
+ * Smart Fallback Categorizer for legacy or missing data
+ */
+const getMuscleGroup = (ex: Exercise): string => {
+  if (ex.muscleGroup && MUSCLE_GROUPS.includes(ex.muscleGroup)) return ex.muscleGroup;
+  
+  const name = ex.name.toLowerCase();
+  if (name.includes('bench') || name.includes('chest') || name.includes('fly') || name.includes('pushup')) return 'Chest';
+  if (name.includes('row') || name.includes('pull') || name.includes('lat') || name.includes('chin')) return 'Back';
+  if (name.includes('press') || name.includes('shoulder') || name.includes('lateral') || name.includes('deltoid')) return 'Shoulders';
+  if (name.includes('curl') || name.includes('tricep') || name.includes('bicep') || name.includes('extension') || name.includes('dip')) return 'Arms';
+  if (name.includes('squat') || name.includes('leg') || name.includes('lung') || name.includes('calf') || name.includes('deadlift')) return 'Legs';
+  if (name.includes('plank') || name.includes('crunch') || name.includes('abs') || name.includes('core')) return 'Core';
+  
+  return 'Other';
+};
+
 const MuscleGroups: React.FC<{ workouts: Workout[] }> = ({ workouts }) => {
   const [timeframe, setTimeframe] = useState<7 | 30 | 90>(30);
 
-  const muscleLoad = useMemo(() => {
-    const stats: Record<string, number> = {};
-    MUSCLE_GROUPS.forEach(g => stats[g] = 0);
+  const stats = useMemo(() => {
+    const load: Record<string, number> = {};
+    const peaks: Record<string, { name: string, volume: number }> = {};
+    
+    MUSCLE_GROUPS.forEach(g => {
+      load[g] = 0;
+      peaks[g] = { name: 'None', volume: 0 };
+    });
+
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - timeframe);
 
     workouts.filter(w => new Date(w.date) >= cutoff).forEach(w => {
       w.exercises.forEach(ex => {
-        const group = ex.muscleGroup || 'Other';
-        const volume = ex.sets.reduce((acc, s) => acc + (s.reps * s.weight), 0);
-        if (stats[group] !== undefined) stats[group] += volume;
+        const group = getMuscleGroup(ex);
+        if (group === 'Other') return;
+
+        const volume = ex.sets.reduce((acc, s) => acc + (s.reps * (s.weight || 0)), 0);
+        load[group] += volume;
+
+        if (volume > peaks[group].volume) {
+          peaks[group] = { name: ex.name, volume };
+        }
       });
     });
-    return stats;
+    
+    return { load, peaks };
   }, [workouts, timeframe]);
 
-  const maxVolume = Math.max(...Object.values(muscleLoad), 1);
+  const maxVolume = Math.max(...Object.values(stats.load), 1);
 
   const getIntensityColor = (group: string) => {
-    const volume = muscleLoad[group] || 0;
+    const volume = stats.load[group] || 0;
     const ratio = volume / maxVolume;
     if (volume === 0) return 'fill-slate-800';
     if (ratio < 0.3) return 'fill-blue-900';
@@ -40,64 +71,108 @@ const MuscleGroups: React.FC<{ workouts: Workout[] }> = ({ workouts }) => {
     return 'fill-orange-500';
   };
 
+  const topMuscle = Object.entries(stats.load).sort((a,b)=>b[1]-a[1])[0];
+
   return (
     <div className="space-y-8 animate-fadeIn pb-20">
-      <header className="flex justify-between items-center">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold mb-2">Overload Dashboard</h1>
-          <p className="text-slate-400">Analysis of muscle-specific load distribution.</p>
+          <h1 className="text-3xl font-bold mb-1">Overload Analysis</h1>
+          <p className="text-slate-400">Muscle activation patterns from the last {timeframe} days.</p>
         </div>
-        <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800">
+        <div className="flex bg-slate-900 p-1.5 rounded-2xl border border-slate-800 w-fit">
           {[7, 30, 90].map(t => (
             <button key={t} onClick={() => setTimeframe(t as any)}
-              className={`px-4 py-2 rounded-lg text-sm font-bold ${timeframe === t ? 'bg-blue-600 text-white' : 'text-slate-500'}`}>
-              {t}D
+              className={`px-5 py-2 rounded-xl text-sm font-bold transition-all ${timeframe === t ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/30' : 'text-slate-500 hover:text-slate-300'}`}>
+              {t} Days
             </button>
           ))}
         </div>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="bg-slate-900 border border-slate-800 rounded-[2rem] p-8 flex flex-col items-center">
-          <h3 className="text-lg font-bold mb-8 flex items-center gap-2">
-            <UserIcon className="w-5 h-5 text-blue-500" /> Activation Map
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        {/* Anatomical Heatmap */}
+        <div className="lg:col-span-4 bg-slate-900 border border-slate-800 rounded-[2.5rem] p-10 flex flex-col items-center">
+          <h3 className="text-lg font-bold mb-10 flex items-center gap-2">
+            <UserIcon className="w-5 h-5 text-blue-500" /> Kinetic Map
           </h3>
-          <svg viewBox="0 0 100 200" className="w-full max-w-[200px]">
-            <circle cx="50" cy="20" r="12" className="fill-slate-800" />
-            <path d="M25 45 Q50 35 75 45 L75 55 Q50 45 25 55 Z" className={getIntensityColor('Shoulders')} />
-            <path d="M30 55 Q50 50 70 55 L70 85 Q50 90 30 85 Z" className={getIntensityColor('Chest')} />
-            <rect x="35" y="90" width="30" height="35" rx="4" className={getIntensityColor('Core')} />
-            <path d="M20 50 L10 110 L25 50 Z" className={getIntensityColor('Arms')} />
-            <path d="M80 50 L90 110 L75 50 Z" className={getIntensityColor('Arms')} />
-            <path d="M35 130 L25 195 L48 130 Z" className={getIntensityColor('Legs')} />
-            <path d="M65 130 L75 195 L52 130 Z" className={getIntensityColor('Legs')} />
-          </svg>
+          <div className="relative group">
+             <div className="absolute inset-0 bg-blue-500/10 blur-[80px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
+             <svg viewBox="0 0 100 200" className="w-full max-w-[220px] relative z-10 transition-transform duration-500 hover:scale-105">
+                <circle cx="50" cy="20" r="14" className="fill-slate-800" />
+                {/* Shoulders */}
+                <path d="M25 45 Q50 35 75 45 L75 55 Q50 45 25 55 Z" className={`${getIntensityColor('Shoulders')} transition-colors duration-700`} />
+                {/* Chest */}
+                <path d="M30 55 Q50 50 70 55 L70 85 Q50 90 30 85 Z" className={`${getIntensityColor('Chest')} transition-colors duration-700`} />
+                {/* Core */}
+                <rect x="35" y="90" width="30" height="40" rx="4" className={`${getIntensityColor('Core')} transition-colors duration-700`} />
+                {/* Arms */}
+                <path d="M20 50 L8 120 L22 55 Z" className={`${getIntensityColor('Arms')} transition-colors duration-700`} />
+                <path d="M80 50 L92 120 L78 55 Z" className={`${getIntensityColor('Arms')} transition-colors duration-700`} />
+                {/* Legs */}
+                <path d="M35 135 L22 195 L48 135 Z" className={`${getIntensityColor('Legs')} transition-colors duration-700`} />
+                <path d="M65 135 L78 195 L52 135 Z" className={`${getIntensityColor('Legs')} transition-colors duration-700`} />
+             </svg>
+          </div>
+          <div className="mt-12 flex flex-wrap justify-center gap-4">
+             <div className="flex items-center gap-2 text-[10px] uppercase font-bold text-slate-500">
+               <div className="w-2 h-2 rounded-full bg-slate-800"></div> Recovery
+             </div>
+             <div className="flex items-center gap-2 text-[10px] uppercase font-bold text-slate-500">
+               <div className="w-2 h-2 rounded-full bg-blue-600"></div> Low Load
+             </div>
+             <div className="flex items-center gap-2 text-[10px] uppercase font-bold text-slate-500">
+               <div className="w-2 h-2 rounded-full bg-orange-500"></div> Overload
+             </div>
+          </div>
         </div>
 
-        <div className="lg:col-span-2 space-y-6">
-          <div className="bg-slate-900 border border-slate-800 rounded-[2rem] p-8">
-            <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
-              <BoltIcon className="w-5 h-5 text-orange-500" /> Volume Breakdown
+        {/* Detailed Breakdown */}
+        <div className="lg:col-span-8 space-y-8">
+          <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] p-8 lg:p-10">
+            <h3 className="text-xl font-bold mb-8 flex items-center gap-3">
+              <BoltIcon className="w-6 h-6 text-orange-500" /> Tonnage Capacity
             </h3>
-            <div className="grid grid-cols-2 gap-4">
-              {Object.entries(muscleLoad).map(([group, volume]) => (
-                <div key={group} className="bg-slate-950 p-4 rounded-2xl border border-slate-800">
-                  <p className="text-[10px] font-black uppercase text-slate-500 mb-1">{group}</p>
-                  <p className="text-xl font-bold text-white">{(volume/1000).toFixed(1)}t</p>
-                  <div className="w-full bg-slate-800 h-1.5 rounded-full mt-2 overflow-hidden">
-                    <div className="bg-blue-500 h-full" style={{ width: `${(volume/maxVolume)*100}%` }}></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {MUSCLE_GROUPS.map(group => {
+                const volume = stats.load[group] || 0;
+                const peak = stats.peaks[group];
+                return (
+                  <div key={group} className="bg-slate-950/50 p-6 rounded-[2rem] border border-slate-800/50 transition-all hover:border-blue-500/30">
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-1">{group}</p>
+                        <p className="text-3xl font-mono font-bold text-white">{(volume/1000).toFixed(2)}<span className="text-sm opacity-50 ml-1">t</span></p>
+                      </div>
+                      <div className="bg-blue-600/10 p-2 rounded-xl">
+                        <ChartBarIcon className="w-5 h-5 text-blue-500" />
+                      </div>
+                    </div>
+                    
+                    <div className="w-full bg-slate-800 h-2 rounded-full mb-6 overflow-hidden">
+                      <div className="bg-gradient-to-r from-blue-600 to-indigo-500 h-full transition-all duration-1000" style={{ width: `${(volume/maxVolume)*100}%` }}></div>
+                    </div>
+
+                    <div className="flex items-center gap-3 text-xs text-slate-400">
+                      <TrophyIcon className="w-4 h-4 text-amber-500 shrink-0" />
+                      <span className="font-medium truncate">Lead: <span className="text-slate-200">{peak.name}</span></span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
-          <div className="bg-blue-600/10 border border-blue-500/20 rounded-[2rem] p-6 flex gap-4">
-            <InformationCircleIcon className="w-6 h-6 text-blue-400 shrink-0" />
-            <p className="text-sm text-slate-400">
-              Your <strong>{Object.entries(muscleLoad).sort((a,b)=>b[1]-a[1])[0]?.[0]}</strong> are under peak strain. 
-              Balanced recruitment is key for structural longevity.
-            </p>
+          <div className="bg-blue-600/10 border border-blue-500/20 rounded-[2rem] p-8 flex gap-6 items-start">
+            <InformationCircleIcon className="w-8 h-8 text-blue-400 shrink-0 mt-1" />
+            <div>
+               <h4 className="font-bold text-blue-400 mb-2">Longitudinal Insight</h4>
+               <p className="text-slate-400 leading-relaxed">
+                  Based on your {timeframe}-day volume, your <strong>{topMuscle?.[0]}</strong> are currently taking the highest load. 
+                  If you're feeling fatigue, consider prioritizing a "Deload Week" or switching focus to 
+                  <strong> {MUSCLE_GROUPS.find(g => stats.load[g] < maxVolume * 0.2) || 'your supporting groups'}</strong> to maintain structural balance.
+               </p>
+            </div>
           </div>
         </div>
       </div>
