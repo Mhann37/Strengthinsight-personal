@@ -7,19 +7,39 @@ import { Workout } from "./types";
  * Connects directly to Gemini API to process images.
  */
 
-// Helper to reliably get env vars in Vite, Create-React-App, or standard environments
+// Helper to reliably get env vars in Vite, Create-React-App, standard environments, or browser storage
 const getEnv = (key: string): string | undefined => {
+  let val: string | undefined;
+
+  // 1. Try localStorage (User Settings Override) - Priority #1
+  if (typeof window !== 'undefined') {
+    val = localStorage.getItem(key) || localStorage.getItem(`REACT_APP_${key}`);
+    if (val) return val;
+  }
+
+  // 2. Try import.meta.env (Vite)
   // @ts-ignore
-  const env = (typeof process !== 'undefined' && process.env) || (import.meta as any).env || {};
-  // Check for plain key, VITE_ prefix (Vite), or REACT_APP_ prefix (CRA)
-  return env[key] || env[`VITE_${key}`] || env[`REACT_APP_${key}`];
+  if (typeof import.meta !== 'undefined' && import.meta.env) {
+    // @ts-ignore
+    val = import.meta.env[key] || import.meta.env[`VITE_${key}`];
+    if (val) return val;
+  }
+
+  // 3. Try standard process.env (Node/CRA)
+  if (typeof process !== 'undefined' && process.env) {
+    val = process.env[key] || process.env[`REACT_APP_${key}`] || process.env[`VITE_${key}`];
+    if (val) return val;
+  }
+
+  // 4. Try global window object (Runtime injection)
+  if (typeof window !== 'undefined') {
+    // @ts-ignore
+    val = (window as any)[key] || (window as any)[`REACT_APP_${key}`] || (window as any).env?.[key];
+    if (val) return val;
+  }
+
+  return undefined;
 };
-
-const API_KEY = getEnv('API_KEY');
-
-// Initialize the client directly. Note: We use a placeholder if missing to allow the app to load,
-// but specific calls will fail/validate.
-const ai = new GoogleGenAI({ apiKey: API_KEY || 'MISSING_KEY' });
 
 // Schema definition matching the frontend types
 const WORKOUT_SCHEMA = {
@@ -68,11 +88,16 @@ const WORKOUT_SCHEMA = {
 } as const;
 
 export const processWorkoutScreenshots = async (images: { base64: string, timestamp: number }[]): Promise<Workout[]> => {
+  // Retrieve key at runtime
+  const API_KEY = getEnv('API_KEY');
+
   if (!API_KEY) {
-    throw new Error("API Key is missing. Please check your environment variables (e.g., .env file with REACT_APP_API_KEY or VITE_API_KEY).");
+    throw new Error("API Key is missing. Please check your environment variables.");
   }
 
   try {
+    // Instantiate client on demand with the latest key
+    const ai = new GoogleGenAI({ apiKey: API_KEY });
     const model = "gemini-3-pro-preview";
 
     const prompt = `Analyze these Whoop Strength Trainer screenshots.

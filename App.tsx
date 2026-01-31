@@ -180,7 +180,7 @@ const App: React.FC = () => {
             )}
             <div className="flex-1 min-w-0">
                <p className="text-sm font-bold text-slate-200 truncate">{user.displayName || 'Athlete'}</p>
-               <p className="text-[10px] text-slate-500 truncate">{user.email}</p>
+               <p className="text-xs text-slate-500 truncate">{user.email}</p>
             </div>
           </div>
           <button onClick={handleLogout} className="flex items-center space-x-3 px-4 py-3 rounded-xl text-red-400 hover:bg-red-500/10 w-full transition-colors">

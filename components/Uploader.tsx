@@ -4,7 +4,6 @@ import { processWorkoutScreenshots } from '../geminiService';
 import { Workout, Exercise, SetRecord } from '../types';
 import { 
   CloudArrowUpIcon, 
-  DocumentCheckIcon, 
   ExclamationCircleIcon, 
   SparklesIcon, 
   TrashIcon, 
