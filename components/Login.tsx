@@ -1,6 +1,6 @@
+
 import React, { useState } from 'react';
-import { signInWithPopup } from 'firebase/auth';
-import { auth, googleProvider } from '../firebase';
+import { signInWithPopup, auth, googleProvider } from '../firebase';
 import { BoltIcon, ChartBarIcon, SparklesIcon } from '@heroicons/react/24/solid';
 
 const Login: React.FC = () => {
@@ -32,7 +32,7 @@ const Login: React.FC = () => {
           <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-500 to-blue-700 rounded-3xl shadow-2xl shadow-blue-500/20 mb-8 transform hover:scale-105 transition-transform duration-500">
             <span className="text-4xl font-black text-white italic">S</span>
           </div>
-          <h1 className="text-4xl font-extrabold tracking-tight text-white mb-3">StrengthInsight</h1>
+          <h1 className="text-4xl font-extrabold tracking-tight text-white mb-3 text-shadow-lg">StrengthInsight</h1>
           <p className="text-slate-400 text-lg">AI-powered analytics for your Whoop data.</p>
         </div>
 

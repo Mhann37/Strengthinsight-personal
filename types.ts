@@ -9,6 +9,7 @@ export interface SetRecord {
 export interface Exercise {
   id: string;
   name: string;
+  muscleGroup?: string; // e.g., 'Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core'
   sets: SetRecord[];
 }
 
@@ -19,4 +20,4 @@ export interface Workout {
   exercises: Exercise[];
 }
 
-export type AppView = 'dashboard' | 'upload' | 'history' | 'analytics' | 'export';
+export type AppView = 'dashboard' | 'upload' | 'history' | 'analytics' | 'export' | 'muscleGroups';

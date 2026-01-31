@@ -1,7 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
-import { onAuthStateChanged, User, signOut } from 'firebase/auth';
+import { User } from 'firebase/auth';
 import { 
+  auth, 
+  db, 
+  onAuthStateChanged, 
+  signOut, 
   collection, 
   addDoc, 
   query, 
@@ -9,14 +13,14 @@ import {
   deleteDoc, 
   doc, 
   onSnapshot 
-} from 'firebase/firestore';
-import { auth, db } from './firebase';
+} from './firebase';
 import { AppView, Workout } from './types';
 import Dashboard from './components/Dashboard';
 import Uploader from './components/Uploader';
 import History from './components/History';
 import Analytics from './components/Analytics';
 import DataExport from './components/DataExport';
+import MuscleGroups from './components/MuscleGroups';
 import Login from './components/Login';
 import { 
   ChartBarIcon, 
@@ -26,7 +30,8 @@ import {
   Bars3Icon,
   XMarkIcon,
   TableCellsIcon,
-  ArrowRightOnRectangleIcon
+  ArrowRightOnRectangleIcon,
+  UserIcon
 } from '@heroicons/react/24/outline';
 
 const App: React.FC = () => {
@@ -37,132 +42,80 @@ const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
 
-  // 1. Auth Observer
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setLoading(false);
-      console.log("Auth State Changed:", currentUser ? `Logged in as ${currentUser.uid}` : "Logged out");
-      if (!currentUser) {
-        setWorkouts([]);
-      }
+      if (!currentUser) setWorkouts([]);
     });
     return () => unsubscribeAuth();
   }, []);
 
-  // 2. Real-time Firestore Sync
   useEffect(() => {
     if (!user) return;
-
     setDataLoading(true);
     const workoutsRef = collection(db, 'workouts');
-    
-    // Simple query to avoid composite index requirements
-    const q = query(
-      workoutsRef, 
-      where('userId', '==', user.uid)
-    );
-
-    console.log(`Starting Firestore sync for user: ${user.uid}`);
+    const q = query(workoutsRef, where('userId', '==', user.uid));
 
     const unsubscribeWorkouts = onSnapshot(q, (snapshot) => {
-      console.log(`Firestore Sync: Received ${snapshot.docs.length} documents`);
-      
       const fetchedWorkouts = snapshot.docs.map(doc => ({
         ...doc.data(),
         id: doc.id
       })) as Workout[];
       
-      // Sort client-side by date descending
-      const sorted = fetchedWorkouts.sort((a, b) => {
-        const dateA = new Date(a.date || 0).getTime();
-        const dateB = new Date(b.date || 0).getTime();
-        return dateB - dateA;
-      });
+      const sorted = fetchedWorkouts.sort((a, b) => 
+        new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()
+      );
       
       setWorkouts(sorted);
       setDataLoading(false);
     }, (error) => {
-      console.error("Firestore Subscription Error:", error);
-      alert(`Database sync error: ${error.message}. Please check your Firebase Security Rules.`);
+      console.error("Data Sync Error:", error);
       setDataLoading(false);
     });
 
     return () => unsubscribeWorkouts();
   }, [user]);
 
-  // 3. Save Workout
   const addWorkouts = async (newWorkouts: Workout[]) => {
-    if (!auth.currentUser) {
-      alert("You must be logged in to save data.");
-      return;
-    }
-
-    if (newWorkouts.length === 0) return;
-
-    console.log(`Attempting to save ${newWorkouts.length} workouts to Firestore...`);
-
+    if (!user) return;
     try {
       const workoutsRef = collection(db, 'workouts');
       const savePromises = newWorkouts.map(workout => {
-        // Strip frontend-only ID if it exists to let Firestore generate one
         const { id, ...data } = workout; 
-        
-        const payload = {
+        return addDoc(workoutsRef, {
           ...data,
-          userId: auth.currentUser!.uid,
+          userId: user.uid,
           updatedAt: new Date().toISOString()
-        };
-        
-        console.debug("Saving payload:", payload);
-        return addDoc(workoutsRef, payload);
+        });
       });
-
       await Promise.all(savePromises);
-      console.log("Successfully saved all workouts to Firestore.");
       setView('dashboard');
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error saving workouts:", error);
-      alert(`Failed to sync data to the cloud: ${error.message}. Ensure your database rules allow writes.`);
     }
   };
 
-  // 4. Delete Workout
   const deleteWorkout = async (id: string) => {
-    if (!auth.currentUser) return;
-    if (!confirm("Are you sure you want to delete this workout?")) return;
-
+    if (!user || !confirm("Delete this workout?")) return;
     try {
       await deleteDoc(doc(db, 'workouts', id));
-      console.log(`Successfully deleted workout document: ${id}`);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error deleting workout:", error);
-      alert(`Failed to delete record: ${error.message}`);
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-    } catch (error) {
-      console.error("Logout failed:", error);
-    }
-  };
+  const handleLogout = () => signOut(auth);
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-white">
-        <div className="flex flex-col items-center space-y-4">
-          <div className="w-12 h-12 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin"></div>
-          <p className="text-slate-400 font-medium animate-pulse">Initializing Session...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-slate-950">
+        <div className="w-12 h-12 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin"></div>
       </div>
     );
   }
 
-  if (!user) {
-    return <Login />;
-  }
+  if (!user) return <Login />;
 
   const NavItem = ({ id, label, icon: Icon }: { id: AppView, label: string, icon: any }) => (
     <button
@@ -180,29 +133,28 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex bg-slate-950">
-      {/* Mobile Header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 bg-slate-900/80 backdrop-blur-md z-40 px-4 py-3 flex items-center justify-between border-b border-slate-800">
         <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-white text-sm italic">S</div>
-          <span className="font-bold tracking-tight text-xl">StrengthInsight</span>
+          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-white italic">S</div>
+          <span className="font-bold text-xl">StrengthInsight</span>
         </div>
         <button onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
           {isSidebarOpen ? <XMarkIcon className="w-7 h-7 text-slate-400" /> : <Bars3Icon className="w-7 h-7 text-slate-400" />}
         </button>
       </div>
 
-      {/* Sidebar Navigation */}
       <aside className={`
-        fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 border-r border-slate-800 p-6 transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 flex flex-col
+        fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 border-r border-slate-800 p-6 transform transition-transform duration-300 lg:relative lg:translate-x-0 flex flex-col
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         <div className="flex items-center space-x-3 mb-10 hidden lg:flex">
           <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-white text-xl italic">S</div>
-          <span className="font-bold tracking-tight text-2xl">StrengthInsight</span>
+          <span className="font-bold text-2xl">StrengthInsight</span>
         </div>
 
-        <nav className="flex-1 flex flex-col space-y-1">
+        <nav className="flex-1 space-y-1">
           <NavItem id="dashboard" label="Overview" icon={Square2StackIcon} />
+          <NavItem id="muscleGroups" label="Muscle Groups" icon={UserIcon} />
           <NavItem id="upload" label="Upload Workout" icon={ArrowUpTrayIcon} />
           <NavItem id="history" label="Workout Logs" icon={ClockIcon} />
           <NavItem id="analytics" label="Progression" icon={ChartBarIcon} />
@@ -211,42 +163,38 @@ const App: React.FC = () => {
           </div>
         </nav>
 
-        {/* User Profile & Logout */}
         <div className="mt-auto pt-6 border-t border-slate-800">
-          <div className="flex items-center space-x-3 mb-4 px-2">
+          <div className="flex items-center space-x-3 mb-4 px-4 overflow-hidden">
             {user.photoURL ? (
-              <img src={user.photoURL} alt="User" className="w-8 h-8 rounded-full border border-slate-700" />
+              <img src={user.photoURL} alt="Avatar" className="w-8 h-8 rounded-full border border-slate-700" />
             ) : (
-              <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-400">
-                {user.displayName?.charAt(0) || 'U'}
+              <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-400 uppercase">
+                {user.displayName?.charAt(0) || user.email?.charAt(0) || 'U'}
               </div>
             )}
-            <div className="overflow-hidden">
-              <p className="text-sm font-bold text-slate-200 truncate">{user.displayName}</p>
-              <p className="text-[10px] text-slate-500 truncate">{user.email}</p>
+            <div className="flex-1 min-w-0">
+               <p className="text-sm font-bold text-slate-200 truncate">{user.displayName || 'Athlete'}</p>
+               <p className="text-[10px] text-slate-500 truncate">{user.email}</p>
             </div>
           </div>
-          <button 
-            onClick={handleLogout}
-            className="flex items-center space-x-3 px-4 py-3 rounded-xl transition-all w-full text-left text-red-400 hover:bg-red-500/10"
-          >
+          <button onClick={handleLogout} className="flex items-center space-x-3 px-4 py-3 rounded-xl text-red-400 hover:bg-red-500/10 w-full transition-colors">
             <ArrowRightOnRectangleIcon className="w-6 h-6" />
             <span className="font-medium">Logout</span>
           </button>
         </div>
       </aside>
 
-      {/* Main Content Area */}
       <main className="flex-1 overflow-y-auto p-4 lg:p-10 pt-20 lg:pt-10">
         <div className="max-w-6xl mx-auto">
           {dataLoading && workouts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 space-y-4">
-              <div className="w-8 h-8 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin"></div>
-              <p className="text-slate-500 text-sm font-medium">Syncing Cloud Records...</p>
+            <div className="flex flex-col items-center justify-center py-20">
+              <div className="w-8 h-8 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin mb-4"></div>
+              <p className="text-slate-500 text-sm font-medium">Syncing Records...</p>
             </div>
           ) : (
             <>
-              {view === 'dashboard' && <Dashboard workouts={workouts} userName={user.displayName} />}
+              {view === 'dashboard' && <Dashboard workouts={workouts} userName={user?.displayName} />}
+              {view === 'muscleGroups' && <MuscleGroups workouts={workouts} />}
               {view === 'upload' && <Uploader onWorkoutsExtracted={addWorkouts} />}
               {view === 'history' && <History workouts={workouts} onDelete={deleteWorkout} />}
               {view === 'analytics' && <Analytics workouts={workouts} />}
@@ -255,14 +203,7 @@ const App: React.FC = () => {
           )}
         </div>
       </main>
-
-      {/* Mobile Overlay */}
-      {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
+      {isSidebarOpen && <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden" onClick={() => setIsSidebarOpen(false)} />}
     </div>
   );
 };
