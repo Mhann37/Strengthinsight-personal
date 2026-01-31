@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { onAuthStateChanged, User, signOut } from 'firebase/auth';
+import { auth } from './firebase';
 import { AppView, Workout } from './types';
 import Dashboard from './components/Dashboard';
 import Uploader from './components/Uploader';
 import History from './components/History';
 import Analytics from './components/Analytics';
 import DataExport from './components/DataExport';
+import Login from './components/Login';
 import { 
   ChartBarIcon, 
   ArrowUpTrayIcon, 
@@ -12,14 +15,16 @@ import {
   Square2StackIcon,
   Bars3Icon,
   XMarkIcon,
-  TableCellsIcon
+  TableCellsIcon,
+  ArrowRightOnRectangleIcon
 } from '@heroicons/react/24/outline';
 
 const App: React.FC = () => {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
   const [view, setView] = useState<AppView>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
-  // Initialize workouts from localStorage
   const [workouts, setWorkouts] = useState<Workout[]>(() => {
     try {
       const saved = localStorage.getItem('strength-insight-workouts');
@@ -30,25 +35,52 @@ const App: React.FC = () => {
     }
   });
 
-  // Persist workouts to localStorage whenever they change
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
   useEffect(() => {
     localStorage.setItem('strength-insight-workouts', JSON.stringify(workouts));
   }, [workouts]);
 
-  // Add new workouts to state
   const addWorkouts = (newWorkouts: Workout[]) => {
     setWorkouts(prev => {
-      // Merge and sort by date descending
       const updated = [...newWorkouts, ...prev];
       return updated.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     });
     setView('dashboard');
   };
 
-  // Delete workout from state
   const deleteWorkout = (id: string) => {
     setWorkouts(prev => prev.filter(w => w.id !== id));
   };
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-white">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="w-12 h-12 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin"></div>
+          <p className="text-slate-400 font-medium animate-pulse">Initializing Session...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Login />;
+  }
 
   const NavItem = ({ id, label, icon: Icon }: { id: AppView, label: string, icon: any }) => (
     <button
@@ -66,28 +98,26 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex bg-slate-950">
-      {/* Mobile Header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 bg-slate-900/80 backdrop-blur-md z-40 px-4 py-3 flex items-center justify-between border-b border-slate-800">
         <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-white">S</div>
+          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-white text-sm italic">S</div>
           <span className="font-bold tracking-tight text-xl">StrengthInsight</span>
         </div>
         <button onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
-          {isSidebarOpen ? <XMarkIcon className="w-7 h-7" /> : <Bars3Icon className="w-7 h-7" />}
+          {isSidebarOpen ? <XMarkIcon className="w-7 h-7 text-slate-400" /> : <Bars3Icon className="w-7 h-7 text-slate-400" />}
         </button>
       </div>
 
-      {/* Sidebar Navigation */}
       <aside className={`
         fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 border-r border-slate-800 p-6 transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 flex flex-col
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
-        <div className="flex items-center space-x-3 mb-12 hidden lg:flex">
-          <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-white text-xl">S</div>
+        <div className="flex items-center space-x-3 mb-10 hidden lg:flex">
+          <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-white text-xl italic">S</div>
           <span className="font-bold tracking-tight text-2xl">StrengthInsight</span>
         </div>
 
-        <nav className="flex-1 flex flex-col space-y-2">
+        <nav className="flex-1 flex flex-col space-y-1">
           <NavItem id="dashboard" label="Overview" icon={Square2StackIcon} />
           <NavItem id="upload" label="Upload Workout" icon={ArrowUpTrayIcon} />
           <NavItem id="history" label="Workout Logs" icon={ClockIcon} />
@@ -96,9 +126,31 @@ const App: React.FC = () => {
              <NavItem id="export" label="Export Data" icon={TableCellsIcon} />
           </div>
         </nav>
+
+        <div className="mt-auto pt-6 border-t border-slate-800">
+          <div className="flex items-center space-x-3 mb-4 px-2">
+            {user.photoURL ? (
+              <img src={user.photoURL} alt="User" className="w-8 h-8 rounded-full border border-slate-700" />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-400">
+                {user.displayName?.charAt(0) || 'U'}
+              </div>
+            )}
+            <div className="overflow-hidden">
+              <p className="text-sm font-bold text-slate-200 truncate">{user.displayName}</p>
+              <p className="text-[10px] text-slate-500 truncate">{user.email}</p>
+            </div>
+          </div>
+          <button 
+            onClick={handleLogout}
+            className="flex items-center space-x-3 px-4 py-3 rounded-xl transition-all w-full text-left text-red-400 hover:bg-red-500/10"
+          >
+            <ArrowRightOnRectangleIcon className="w-6 h-6" />
+            <span className="font-medium">Logout</span>
+          </button>
+        </div>
       </aside>
 
-      {/* Main Content Area */}
       <main className="flex-1 overflow-y-auto p-4 lg:p-10 pt-20 lg:pt-10">
         <div className="max-w-6xl mx-auto">
           {view === 'dashboard' && <Dashboard workouts={workouts} />}
@@ -109,7 +161,6 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      {/* Mobile Overlay */}
       {isSidebarOpen && (
         <div 
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"

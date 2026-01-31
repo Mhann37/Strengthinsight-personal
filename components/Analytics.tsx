@@ -149,7 +149,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ workouts }) => {
                       fontSize={10} 
                       tickLine={false} 
                       axisLine={false} 
-                      domain={['auto', 'auto']} // Focus on the data range
+                      domain={['auto', 'auto']} 
                     />
                     <Tooltip content={<CustomTooltip />} />
                     <Line 

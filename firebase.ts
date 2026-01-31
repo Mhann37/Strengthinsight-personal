@@ -1,20 +1,15 @@
-
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
-// TODO: REPLACE WITH YOUR FIREBASE PROJECT CONFIGURATION
-// 1. Go to console.firebase.google.com
-// 2. Create a project
-// 3. Register a Web App
-// 4. Copy the config object below
+// Using import.meta.env as requested for Vite/Vercel environments.
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY_HERE",
-  authDomain: "strength-insight.vercel.app",
-  projectId: "gen-lang-client-0337514261",
-  storageBucket: "strength-insight.vercel.app",
-  messagingSenderId: "123456789",
-  appId: "1:123456789:web:..."
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
 // Initialize Firebase
