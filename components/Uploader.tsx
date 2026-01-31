@@ -78,9 +78,9 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
       // Improve error reporting for common issues
       if (err.message) {
         if (err.message.includes("API Key")) {
-          msg = "Configuration Error: " + err.message;
+          msg = "API Key Error: Please check your environment configuration.";
         } else if (err.message.includes("403")) {
-          msg = "API Access Denied. Please check your API Key restrictions in Google Cloud Console.";
+          msg = "API Access Denied. Please check your API Key restrictions.";
         } else if (err.message.includes("400")) {
           msg = "Bad Request. The images might be too large or the format unsupported.";
         } else if (err.message.includes("fetch")) {

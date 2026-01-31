@@ -7,40 +7,6 @@ import { Workout } from "./types";
  * Connects directly to Gemini API to process images.
  */
 
-// Helper to reliably get env vars in Vite, Create-React-App, standard environments, or browser storage
-const getEnv = (key: string): string | undefined => {
-  let val: string | undefined;
-
-  // 1. Try localStorage (User Settings Override) - Priority #1
-  if (typeof window !== 'undefined') {
-    val = localStorage.getItem(key) || localStorage.getItem(`REACT_APP_${key}`);
-    if (val) return val;
-  }
-
-  // 2. Try import.meta.env (Vite)
-  // @ts-ignore
-  if (typeof import.meta !== 'undefined' && import.meta.env) {
-    // @ts-ignore
-    val = import.meta.env[key] || import.meta.env[`VITE_${key}`];
-    if (val) return val;
-  }
-
-  // 3. Try standard process.env (Node/CRA)
-  if (typeof process !== 'undefined' && process.env) {
-    val = process.env[key] || process.env[`REACT_APP_${key}`] || process.env[`VITE_${key}`];
-    if (val) return val;
-  }
-
-  // 4. Try global window object (Runtime injection)
-  if (typeof window !== 'undefined') {
-    // @ts-ignore
-    val = (window as any)[key] || (window as any)[`REACT_APP_${key}`] || (window as any).env?.[key];
-    if (val) return val;
-  }
-
-  return undefined;
-};
-
 // Schema definition matching the frontend types
 const WORKOUT_SCHEMA = {
   type: Type.ARRAY,
@@ -88,15 +54,15 @@ const WORKOUT_SCHEMA = {
 } as const;
 
 export const processWorkoutScreenshots = async (images: { base64: string, timestamp: number }[]): Promise<Workout[]> => {
-  // Retrieve key at runtime
-  const API_KEY = getEnv('API_KEY');
+  // Use the API Key from the environment variable as per standard security practices.
+  // We explicitly check both process.env and import.meta.env to support various build tools (CRA/Vite).
+  const API_KEY = process.env.API_KEY || (import.meta as any).env?.VITE_API_KEY;
 
   if (!API_KEY) {
-    throw new Error("API Key is missing. Please check your environment variables.");
+    throw new Error("API Key is missing. Please ensure your environment variables are configured correctly.");
   }
 
   try {
-    // Instantiate client on demand with the latest key
     const ai = new GoogleGenAI({ apiKey: API_KEY });
     const model = "gemini-3-pro-preview";
 
