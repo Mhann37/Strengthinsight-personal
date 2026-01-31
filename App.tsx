@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged, User, signOut } from 'firebase/auth';
 import { 
@@ -245,7 +246,7 @@ const App: React.FC = () => {
             </div>
           ) : (
             <>
-              {view === 'dashboard' && <Dashboard workouts={workouts} />}
+              {view === 'dashboard' && <Dashboard workouts={workouts} userName={user.displayName} />}
               {view === 'upload' && <Uploader onWorkoutsExtracted={addWorkouts} />}
               {view === 'history' && <History workouts={workouts} onDelete={deleteWorkout} />}
               {view === 'analytics' && <Analytics workouts={workouts} />}

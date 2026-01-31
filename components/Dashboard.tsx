@@ -7,17 +7,21 @@ import { FireIcon, BoltIcon, TrophyIcon } from '@heroicons/react/24/solid';
 
 interface DashboardProps {
   workouts: Workout[];
+  userName?: string | null;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ workouts }) => {
+const Dashboard: React.FC<DashboardProps> = ({ workouts, userName }) => {
   const totalVolume = workouts.reduce((acc, w) => acc + (w.totalVolume || 0), 0);
   const totalWorkouts = workouts.length;
   const recentWorkout = workouts[0];
 
+  // Extract first name from display name or fallback to 'Athlete'
+  const firstName = userName ? userName.split(' ')[0] : 'Athlete';
+
   return (
     <div className="space-y-8 animate-fadeIn">
       <header>
-        <h1 className="text-3xl font-bold mb-2">Welcome back, Athlete</h1>
+        <h1 className="text-3xl font-bold mb-2">Welcome back, {firstName}</h1>
         <p className="text-slate-400">Here's your strength progression at a glance.</p>
       </header>
 

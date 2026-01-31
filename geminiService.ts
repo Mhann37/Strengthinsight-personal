@@ -1,9 +1,7 @@
-
 import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
 import { Workout, Exercise, SetRecord } from "./types";
 
 // Always use Type.OBJECT with propertyOrdering and avoid empty objects.
-// Removed enum as it's not explicitly supported in the provided Type enum; used description instead.
 const WORKOUT_SCHEMA = {
   type: Type.ARRAY,
   items: {
@@ -45,7 +43,7 @@ const WORKOUT_SCHEMA = {
 };
 
 export const processWorkoutScreenshots = async (images: { base64: string, timestamp: number }[]): Promise<Workout[]> => {
-  // CRITICAL: Create a new GoogleGenAI instance right before making an API call to ensure it uses the most up-to-date API key from the environment/dialog.
+  // CRITICAL: Create a new GoogleGenAI instance right before making an API call to ensure it uses the most up-to-date API key.
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
   // Use gemini-3-pro-preview for complex reasoning tasks like parsing structured workout data from multiple screenshots.
@@ -67,16 +65,23 @@ export const processWorkoutScreenshots = async (images: { base64: string, timest
     4. If multiple screenshots have timestamps within a few hours of each other, they belong to the SAME workout.
     5. Ensure duplicate exercises (appearing across multiple screenshots) are merged correctly.
     
-    Return the data as an array of workout objects.
+    Return the data as an array of workout objects following the requested JSON schema.
   `;
 
   try {
-    const imageParts = images.map(img => ({
-      inlineData: {
-        mimeType: 'image/png',
-        data: img.base64.split(',')[1] || img.base64
-      }
-    }));
+    const imageParts = images.map(img => {
+      // Robustly extract MIME type and data from base64 strings
+      const mimeMatch = img.base64.match(/^data:([^;]+);base64,/);
+      const mimeType = mimeMatch ? mimeMatch[1] : 'image/png';
+      const base64Data = img.base64.includes(',') ? img.base64.split(',')[1] : img.base64;
+
+      return {
+        inlineData: {
+          mimeType,
+          data: base64Data
+        }
+      };
+    });
 
     // Use ai.models.generateContent with a content object containing parts as per current SDK guidelines.
     const response: GenerateContentResponse = await ai.models.generateContent({

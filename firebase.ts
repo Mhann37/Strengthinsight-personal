@@ -1,6 +1,4 @@
-
 // Modular Firebase initialization for v9+
-// Correcting imports to ensure they resolve properly in environments experiencing "no exported member" errors.
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
@@ -23,11 +21,6 @@ const firebaseConfig = {
   messagingSenderId: getEnv('VITE_FIREBASE_MESSAGING_SENDER_ID'),
   appId: getEnv('VITE_FIREBASE_APP_ID')
 };
-
-// Log for debugging (only in development if needed)
-if (!firebaseConfig.apiKey) {
-  console.warn("Firebase API Key is missing. Check your environment variables.");
-}
 
 // Initialize the Firebase app instance
 const app = initializeApp(firebaseConfig);
