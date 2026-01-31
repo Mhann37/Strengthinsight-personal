@@ -4,11 +4,25 @@ import { Workout } from "./types";
 
 /**
  * CLIENT-SIDE SERVICE
- * Connects directly to Gemini API to process images, bypassing the need for a backend Cloud Function.
+ * Connects directly to Gemini API to process images.
  */
 
+// Helper to reliably get env vars in Vite, Create-React-App, or standard environments
+const getEnv = (key: string): string | undefined => {
+  // @ts-ignore
+  const env = (typeof process !== 'undefined' && process.env) || (import.meta as any).env || {};
+  // Check for plain key, VITE_ prefix (Vite), or REACT_APP_ prefix (CRA)
+  return env[key] || env[`VITE_${key}`] || env[`REACT_APP_${key}`];
+};
+
+const API_KEY = getEnv('API_KEY');
+
+if (!API_KEY) {
+  console.warn("Gemini API Key is missing. Ensure VITE_API_KEY or REACT_APP_API_KEY is set in your environment.");
+}
+
 // Initialize the client directly
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const ai = new GoogleGenAI({ apiKey: API_KEY || 'MISSING_KEY' });
 
 // Schema definition matching the frontend types
 const WORKOUT_SCHEMA = {
