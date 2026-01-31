@@ -1,6 +1,8 @@
-import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+
+// Fix: Import initializeApp from 'firebase/app' using consistent named exports
+import { initializeApp } from 'firebase/app';
+import { getAuth, GoogleAuthProvider } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
 
 // Using import.meta.env as requested for Vite/Vercel environments.
 const firebaseConfig = {
@@ -13,6 +15,7 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
+// Standard modular initialization for Firebase JS SDK v9+
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);

@@ -1,6 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { onAuthStateChanged, User, signOut } from 'firebase/auth';
-import { auth } from './firebase';
+import { 
+  collection, 
+  addDoc, 
+  getDocs, 
+  query, 
+  where, 
+  orderBy, 
+  deleteDoc, 
+  doc, 
+  onSnapshot 
+} from 'firebase/firestore';
+import { auth, db } from './firebase';
 import { AppView, Workout } from './types';
 import Dashboard from './components/Dashboard';
 import Uploader from './components/Uploader';
@@ -22,41 +33,85 @@ import {
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [dataLoading, setDataLoading] = useState(false);
   const [view, setView] = useState<AppView>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  
-  const [workouts, setWorkouts] = useState<Workout[]>(() => {
-    try {
-      const saved = localStorage.getItem('strength-insight-workouts');
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      console.error("Failed to load workouts from local storage", e);
-      return [];
-    }
-  });
+  const [workouts, setWorkouts] = useState<Workout[]>([]);
 
+  // 1. Auth Observer & Data Sync
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setLoading(false);
+      
+      if (!currentUser) {
+        setWorkouts([]);
+      }
     });
-    return () => unsubscribe();
+    return () => unsubscribeAuth();
   }, []);
 
+  // 2. Real-time Firestore Sync (Isolated by userId)
   useEffect(() => {
-    localStorage.setItem('strength-insight-workouts', JSON.stringify(workouts));
-  }, [workouts]);
+    if (!user) return;
 
-  const addWorkouts = (newWorkouts: Workout[]) => {
-    setWorkouts(prev => {
-      const updated = [...newWorkouts, ...prev];
-      return updated.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    setDataLoading(true);
+    const workoutsRef = collection(db, 'workouts');
+    const q = query(
+      workoutsRef, 
+      where('userId', '==', user.uid),
+      orderBy('date', 'desc')
+    );
+
+    const unsubscribeWorkouts = onSnapshot(q, (snapshot) => {
+      const fetchedWorkouts = snapshot.docs.map(doc => ({
+        ...doc.data(),
+        id: doc.id
+      })) as Workout[];
+      setWorkouts(fetchedWorkouts);
+      setDataLoading(false);
+    }, (error) => {
+      console.error("Firestore Error:", error);
+      setDataLoading(false);
     });
-    setView('dashboard');
+
+    return () => unsubscribeWorkouts();
+  }, [user]);
+
+  // 3. Save Workout to Firestore
+  const addWorkouts = async (newWorkouts: Workout[]) => {
+    if (!auth.currentUser) return;
+
+    try {
+      const workoutsRef = collection(db, 'workouts');
+      const savePromises = newWorkouts.map(workout => {
+        // Strip the temporary ID from geminiService and add userId
+        const { id, ...data } = workout; 
+        return addDoc(workoutsRef, {
+          ...data,
+          userId: auth.currentUser!.uid,
+          createdAt: new Date().toISOString()
+        });
+      });
+
+      await Promise.all(savePromises);
+      setView('dashboard');
+    } catch (error) {
+      console.error("Error saving workouts:", error);
+      alert("Failed to save workouts to cloud storage.");
+    }
   };
 
-  const deleteWorkout = (id: string) => {
-    setWorkouts(prev => prev.filter(w => w.id !== id));
+  // 4. Delete Workout from Firestore
+  const deleteWorkout = async (id: string) => {
+    if (!auth.currentUser) return;
+
+    try {
+      await deleteDoc(doc(db, 'workouts', id));
+    } catch (error) {
+      console.error("Error deleting workout:", error);
+      alert("Failed to delete workout.");
+    }
   };
 
   const handleLogout = async () => {
@@ -98,6 +153,7 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex bg-slate-950">
+      {/* Mobile Header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 bg-slate-900/80 backdrop-blur-md z-40 px-4 py-3 flex items-center justify-between border-b border-slate-800">
         <div className="flex items-center space-x-2">
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-white text-sm italic">S</div>
@@ -108,6 +164,7 @@ const App: React.FC = () => {
         </button>
       </div>
 
+      {/* Sidebar Navigation */}
       <aside className={`
         fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 border-r border-slate-800 p-6 transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 flex flex-col
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
@@ -127,6 +184,7 @@ const App: React.FC = () => {
           </div>
         </nav>
 
+        {/* User Profile & Logout */}
         <div className="mt-auto pt-6 border-t border-slate-800">
           <div className="flex items-center space-x-3 mb-4 px-2">
             {user.photoURL ? (
@@ -151,16 +209,26 @@ const App: React.FC = () => {
         </div>
       </aside>
 
+      {/* Main Content Area */}
       <main className="flex-1 overflow-y-auto p-4 lg:p-10 pt-20 lg:pt-10">
         <div className="max-w-6xl mx-auto">
-          {view === 'dashboard' && <Dashboard workouts={workouts} />}
-          {view === 'upload' && <Uploader onWorkoutsExtracted={addWorkouts} />}
-          {view === 'history' && <History workouts={workouts} onDelete={deleteWorkout} />}
-          {view === 'analytics' && <Analytics workouts={workouts} />}
-          {view === 'export' && <DataExport workouts={workouts} />}
+          {dataLoading && workouts.length === 0 ? (
+            <div className="flex items-center justify-center py-20">
+              <div className="w-8 h-8 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin"></div>
+            </div>
+          ) : (
+            <>
+              {view === 'dashboard' && <Dashboard workouts={workouts} />}
+              {view === 'upload' && <Uploader onWorkoutsExtracted={addWorkouts} />}
+              {view === 'history' && <History workouts={workouts} onDelete={deleteWorkout} />}
+              {view === 'analytics' && <Analytics workouts={workouts} />}
+              {view === 'export' && <DataExport workouts={workouts} />}
+            </>
+          )}
         </div>
       </main>
 
+      {/* Mobile Overlay */}
       {isSidebarOpen && (
         <div 
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
