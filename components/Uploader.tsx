@@ -1,11 +1,9 @@
 
 import React, { useState, useRef } from 'react';
 import { processWorkoutScreenshots } from '../geminiService';
-import { Workout, Exercise, SetRecord } from '../types';
+import { Workout, Exercise, SetRecord, MuscleDistribution } from '../types';
 import { 
   CloudArrowUpIcon, 
-  DocumentCheckIcon, 
-  ExclamationCircleIcon, 
   SparklesIcon, 
   TrashIcon, 
   XCircleIcon,
@@ -87,10 +85,32 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
     setPendingWorkouts(updated);
   };
 
-  const handleUpdateExerciseField = (wIdx: number, eIdx: number, field: keyof Exercise, value: string) => {
+  const handleUpdateExerciseField = (wIdx: number, eIdx: number, field: keyof Exercise, value: any) => {
     if (!pendingWorkouts) return;
     const updated = [...pendingWorkouts];
     (updated[wIdx].exercises[eIdx] as any)[field] = value;
+    setPendingWorkouts(updated);
+  };
+
+  const updateMuscleDistribution = (wIdx: number, eIdx: number, dIdx: number, field: keyof MuscleDistribution, value: any) => {
+    if (!pendingWorkouts) return;
+    const updated = [...pendingWorkouts];
+    const dist = updated[wIdx].exercises[eIdx].muscleDistributions[dIdx];
+    (dist as any)[field] = field === 'factor' ? parseFloat(value) : value;
+    setPendingWorkouts(updated);
+  };
+
+  const addMuscleDist = (wIdx: number, eIdx: number) => {
+    if (!pendingWorkouts) return;
+    const updated = [...pendingWorkouts];
+    updated[wIdx].exercises[eIdx].muscleDistributions.push({ group: 'Core', factor: 0.1 });
+    setPendingWorkouts(updated);
+  };
+
+  const removeMuscleDist = (wIdx: number, eIdx: number, dIdx: number) => {
+    if (!pendingWorkouts) return;
+    const updated = [...pendingWorkouts];
+    updated[wIdx].exercises[eIdx].muscleDistributions.splice(dIdx, 1);
     setPendingWorkouts(updated);
   };
 
@@ -137,7 +157,7 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
       const finalized = pendingWorkouts.map(w => ({
         ...w,
         totalVolume: w.exercises.reduce((acc, ex) => 
-          acc + ex.sets.reduce((sAcc, s) => sAcc + (s.reps * s.weight), 0)
+          acc + ex.sets.reduce((sAcc, s) => sAcc + (s.reps * (s.weight || 0)), 0)
         , 0)
       }));
       await onWorkoutsExtracted(finalized);
@@ -175,7 +195,7 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
               </div>
               <SparklesIcon className="w-6 h-6 text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
-            <h3 className="text-2xl font-bold mb-2">Whoop</h3>
+            <h3 className="text-2xl font-bold mb-2 text-white">Whoop</h3>
             <p className="text-slate-400 text-sm leading-relaxed">
               Fully supported. Analyzes Strength Trainer screenshots for reps, sets, and muscle strain.
             </p>
@@ -238,30 +258,48 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
               <div className="p-6 space-y-8">
                 {workout.exercises.map((ex, eIdx) => (
                   <div key={eIdx} className="bg-slate-950/50 rounded-[2rem] border border-slate-800/50 p-6 group/ex">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                      <div>
-                        <label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest block mb-2">Exercise Name</label>
-                        <input 
-                          className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 w-full font-bold text-white outline-none focus:border-blue-500 transition-all"
-                          value={ex.name}
-                          onChange={(e) => handleUpdateExerciseField(wIdx, eIdx, 'name', e.target.value)}
-                        />
+                    <div className="mb-6">
+                      <label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest block mb-2">Exercise Name</label>
+                      <input 
+                        className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 w-full font-bold text-white outline-none focus:border-blue-500 transition-all"
+                        value={ex.name}
+                        onChange={(e) => handleUpdateExerciseField(wIdx, eIdx, 'name', e.target.value)}
+                      />
+                    </div>
+
+                    <div className="mb-8">
+                      <div className="flex justify-between items-center mb-2">
+                        <label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest block">Muscle Distributions (Beta)</label>
+                        <button onClick={() => addMuscleDist(wIdx, eIdx)} className="text-[10px] text-blue-500 hover:text-blue-400 font-bold uppercase tracking-widest">Add Group</button>
                       </div>
-                      <div>
-                        <label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest block mb-2">Muscle Group</label>
-                        <div className="relative">
-                          <TagIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
-                          <select 
-                            className="bg-slate-900 border border-slate-800 rounded-xl pl-10 pr-4 py-2 w-full font-bold text-blue-400 outline-none focus:border-blue-500 transition-all appearance-none cursor-pointer"
-                            value={ex.muscleGroup || ''}
-                            onChange={(e) => handleUpdateExerciseField(wIdx, eIdx, 'muscleGroup', e.target.value)}
-                          >
-                            <option value="">Select Group...</option>
-                            {MUSCLE_GROUPS.map(g => (
-                              <option key={g} value={g}>{g}</option>
-                            ))}
-                          </select>
-                        </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {ex.muscleDistributions.map((dist, dIdx) => (
+                          <div key={dIdx} className="flex items-center space-x-2 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2">
+                            <TagIcon className="w-4 h-4 text-slate-600 shrink-0" />
+                            <select 
+                              className="bg-transparent text-xs font-bold text-slate-300 outline-none flex-1"
+                              value={dist.group}
+                              onChange={(e) => updateMuscleDistribution(wIdx, eIdx, dIdx, 'group', e.target.value)}
+                            >
+                              {MUSCLE_GROUPS.map(g => <option key={g} value={g}>{g}</option>)}
+                            </select>
+                            <div className="flex items-center space-x-1 border-l border-slate-800 pl-2">
+                              <span className="text-[10px] font-bold text-slate-500">LOAD</span>
+                              <input 
+                                type="number" 
+                                step="0.1" 
+                                min="0" 
+                                max="1"
+                                className="bg-slate-800 rounded px-1.5 py-0.5 text-xs font-mono text-blue-400 w-12 outline-none"
+                                value={dist.factor}
+                                onChange={(e) => updateMuscleDistribution(wIdx, eIdx, dIdx, 'factor', e.target.value)}
+                              />
+                            </div>
+                            <button onClick={() => removeMuscleDist(wIdx, eIdx, dIdx)} className="text-slate-700 hover:text-red-500 transition-colors">
+                              <XCircleIcon className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
                       </div>
                     </div>
 
@@ -405,7 +443,7 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
             <div className="w-24 h-24 bg-slate-800 rounded-[2rem] flex items-center justify-center mb-6 group-hover:scale-110 group-hover:bg-blue-600/10 group-hover:text-blue-500 transition-all duration-500 text-slate-500">
               <CloudArrowUpIcon className="w-12 h-12" />
             </div>
-            <h3 className="text-2xl font-bold mb-2">Select Screenshots</h3>
+            <h3 className="text-2xl font-bold mb-2 text-white">Select Screenshots</h3>
             <p className="text-slate-500 max-w-xs">Drop your Whoop Strength summaries here for AI vision analysis.</p>
           </>
         )}

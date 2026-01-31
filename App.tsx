@@ -117,10 +117,10 @@ const App: React.FC = () => {
 
   if (!user) return <Login />;
 
-  const NavItem = ({ id, label, icon: Icon }: { id: AppView, label: string, icon: any }) => (
+  const NavItem = ({ id, label, icon: Icon, isBeta }: { id: AppView, label: string, icon: any, isBeta?: boolean }) => (
     <button
       onClick={() => { setView(id); setIsSidebarOpen(false); }}
-      className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all w-full text-left ${
+      className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all w-full text-left relative group ${
         view === id 
         ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' 
         : 'text-slate-400 hover:bg-slate-800 hover:text-white'
@@ -128,6 +128,11 @@ const App: React.FC = () => {
     >
       <Icon className="w-6 h-6" />
       <span className="font-medium">{label}</span>
+      {isBeta && (
+        <span className="ml-2 px-1.5 py-0.5 bg-orange-500/10 text-orange-500 text-[10px] font-black uppercase rounded-md border border-orange-500/20 leading-none">
+          Beta
+        </span>
+      )}
     </button>
   );
 
@@ -154,7 +159,7 @@ const App: React.FC = () => {
 
         <nav className="flex-1 space-y-1">
           <NavItem id="dashboard" label="Overview" icon={Square2StackIcon} />
-          <NavItem id="muscleGroups" label="Muscle Groups" icon={UserIcon} />
+          <NavItem id="muscleGroups" label="Muscle Groups" icon={UserIcon} isBeta={true} />
           <NavItem id="upload" label="Upload Workout" icon={ArrowUpTrayIcon} />
           <NavItem id="history" label="Workout Logs" icon={ClockIcon} />
           <NavItem id="analytics" label="Progression" icon={ChartBarIcon} />

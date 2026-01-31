@@ -11,23 +11,6 @@ import {
 
 const MUSCLE_GROUPS = ['Chest', 'Back', 'Shoulders', 'Arms', 'Legs', 'Core'];
 
-/**
- * Smart Fallback Categorizer for legacy or missing data
- */
-const getMuscleGroup = (ex: Exercise): string => {
-  if (ex.muscleGroup && MUSCLE_GROUPS.includes(ex.muscleGroup)) return ex.muscleGroup;
-  
-  const name = ex.name.toLowerCase();
-  if (name.includes('bench') || name.includes('chest') || name.includes('fly') || name.includes('pushup')) return 'Chest';
-  if (name.includes('row') || name.includes('pull') || name.includes('lat') || name.includes('chin')) return 'Back';
-  if (name.includes('press') || name.includes('shoulder') || name.includes('lateral') || name.includes('deltoid')) return 'Shoulders';
-  if (name.includes('curl') || name.includes('tricep') || name.includes('bicep') || name.includes('extension') || name.includes('dip')) return 'Arms';
-  if (name.includes('squat') || name.includes('leg') || name.includes('lung') || name.includes('calf') || name.includes('deadlift')) return 'Legs';
-  if (name.includes('plank') || name.includes('crunch') || name.includes('abs') || name.includes('core')) return 'Core';
-  
-  return 'Other';
-};
-
 const MuscleGroups: React.FC<{ workouts: Workout[] }> = ({ workouts }) => {
   const [timeframe, setTimeframe] = useState<7 | 30 | 90>(30);
 
@@ -45,15 +28,21 @@ const MuscleGroups: React.FC<{ workouts: Workout[] }> = ({ workouts }) => {
 
     workouts.filter(w => new Date(w.date) >= cutoff).forEach(w => {
       w.exercises.forEach(ex => {
-        const group = getMuscleGroup(ex);
-        if (group === 'Other') return;
-
         const volume = ex.sets.reduce((acc, s) => acc + (s.reps * (s.weight || 0)), 0);
-        load[group] += volume;
+        
+        // Use muscle distributions for intelligent load calculation
+        const distributions = ex.muscleDistributions || [];
+        
+        distributions.forEach(dist => {
+          if (MUSCLE_GROUPS.includes(dist.group)) {
+            const adjustedVolume = volume * (dist.factor || 0);
+            load[dist.group] += adjustedVolume;
 
-        if (volume > peaks[group].volume) {
-          peaks[group] = { name: ex.name, volume };
-        }
+            if (adjustedVolume > peaks[dist.group].volume) {
+              peaks[dist.group] = { name: ex.name, volume: adjustedVolume };
+            }
+          }
+        });
       });
     });
     
@@ -66,8 +55,9 @@ const MuscleGroups: React.FC<{ workouts: Workout[] }> = ({ workouts }) => {
     const volume = stats.load[group] || 0;
     const ratio = volume / maxVolume;
     if (volume === 0) return 'fill-slate-800';
-    if (ratio < 0.3) return 'fill-blue-900';
-    if (ratio < 0.6) return 'fill-blue-600';
+    if (ratio < 0.2) return 'fill-blue-900';
+    if (ratio < 0.45) return 'fill-blue-700';
+    if (ratio < 0.75) return 'fill-blue-500';
     return 'fill-orange-500';
   };
 
@@ -77,8 +67,11 @@ const MuscleGroups: React.FC<{ workouts: Workout[] }> = ({ workouts }) => {
     <div className="space-y-8 animate-fadeIn pb-20">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold mb-1">Overload Analysis</h1>
-          <p className="text-slate-400">Muscle activation patterns from the last {timeframe} days.</p>
+          <div className="flex items-center space-x-2 mb-1">
+            <h1 className="text-3xl font-bold">Overload Analysis</h1>
+            <span className="px-1.5 py-0.5 bg-orange-500/10 text-orange-500 text-[10px] font-black uppercase rounded-md border border-orange-500/20">Beta</span>
+          </div>
+          <p className="text-slate-400">Deep kinematic load tracking for the last {timeframe} days.</p>
         </div>
         <div className="flex bg-slate-900 p-1.5 rounded-2xl border border-slate-800 w-fit">
           {[7, 30, 90].map(t => (
@@ -119,7 +112,7 @@ const MuscleGroups: React.FC<{ workouts: Workout[] }> = ({ workouts }) => {
                <div className="w-2 h-2 rounded-full bg-slate-800"></div> Recovery
              </div>
              <div className="flex items-center gap-2 text-[10px] uppercase font-bold text-slate-500">
-               <div className="w-2 h-2 rounded-full bg-blue-600"></div> Low Load
+               <div className="w-2 h-2 rounded-full bg-blue-600"></div> Optimal
              </div>
              <div className="flex items-center gap-2 text-[10px] uppercase font-bold text-slate-500">
                <div className="w-2 h-2 rounded-full bg-orange-500"></div> Overload
@@ -131,7 +124,7 @@ const MuscleGroups: React.FC<{ workouts: Workout[] }> = ({ workouts }) => {
         <div className="lg:col-span-8 space-y-8">
           <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] p-8 lg:p-10">
             <h3 className="text-xl font-bold mb-8 flex items-center gap-3">
-              <BoltIcon className="w-6 h-6 text-orange-500" /> Tonnage Capacity
+              <BoltIcon className="w-6 h-6 text-orange-500" /> Intensity Distribution
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {MUSCLE_GROUPS.map(group => {
@@ -155,7 +148,7 @@ const MuscleGroups: React.FC<{ workouts: Workout[] }> = ({ workouts }) => {
 
                     <div className="flex items-center gap-3 text-xs text-slate-400">
                       <TrophyIcon className="w-4 h-4 text-amber-500 shrink-0" />
-                      <span className="font-medium truncate">Lead: <span className="text-slate-200">{peak.name}</span></span>
+                      <span className="font-medium truncate">Peak Load: <span className="text-slate-200">{peak.name}</span></span>
                     </div>
                   </div>
                 );
@@ -166,11 +159,11 @@ const MuscleGroups: React.FC<{ workouts: Workout[] }> = ({ workouts }) => {
           <div className="bg-blue-600/10 border border-blue-500/20 rounded-[2rem] p-8 flex gap-6 items-start">
             <InformationCircleIcon className="w-8 h-8 text-blue-400 shrink-0 mt-1" />
             <div>
-               <h4 className="font-bold text-blue-400 mb-2">Longitudinal Insight</h4>
+               <h4 className="font-bold text-blue-400 mb-2">Kinematic Intelligence</h4>
                <p className="text-slate-400 leading-relaxed">
-                  Based on your {timeframe}-day volume, your <strong>{topMuscle?.[0]}</strong> are currently taking the highest load. 
-                  If you're feeling fatigue, consider prioritizing a "Deload Week" or switching focus to 
-                  <strong> {MUSCLE_GROUPS.find(g => stats.load[g] < maxVolume * 0.2) || 'your supporting groups'}</strong> to maintain structural balance.
+                  Your load calculation now factors in secondary muscle engagement. 
+                  Currently, <strong>{topMuscle?.[0]}</strong> shows the highest combined load factor. 
+                  This "Beta" tracking uses AI to estimate how much force is distributed across your joints and supporting muscles during compound movements.
                </p>
             </div>
           </div>

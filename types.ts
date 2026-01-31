@@ -6,10 +6,15 @@ export interface SetRecord {
   unit: 'kg' | 'lbs';
 }
 
+export interface MuscleDistribution {
+  group: string; // 'Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core'
+  factor: number; // 0.0 to 1.0 representing the intensity of load on this group
+}
+
 export interface Exercise {
   id: string;
   name: string;
-  muscleGroup?: string; // e.g., 'Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core'
+  muscleDistributions: MuscleDistribution[];
   sets: SetRecord[];
 }
 

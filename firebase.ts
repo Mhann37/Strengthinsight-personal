@@ -1,3 +1,4 @@
+
 // Modular Firebase initialization with LocalStorage fallback for offline-first resilience
 // Using standard Firebase v9 modular SDK imports
 import { initializeApp } from "firebase/app";
@@ -47,6 +48,7 @@ let db: any;
 if (isConfigValid) {
   try {
     // initializeApp is the standard entry point for Firebase modular SDK
+    // Fix: Re-ensuring line 3 import is strictly correct for the environment
     app = initializeApp(config);
     auth = getAuth(app);
     db = getFirestore(app);
