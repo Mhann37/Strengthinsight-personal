@@ -1,3 +1,4 @@
+
 import { initializeApp } from "firebase/app";
 import { 
   getAuth, 
@@ -6,7 +7,9 @@ import {
   signOut, 
   signInWithPopup,
   signInWithRedirect,
-  getRedirectResult
+  getRedirectResult,
+  browserLocalPersistence,
+  setPersistence
 } from "firebase/auth";
 import type { User } from "firebase/auth";
 import { 
@@ -28,7 +31,6 @@ const getEnv = (key: string): string | undefined => {
 };
 
 // Fallback to API_KEY if FIREBASE_API_KEY is missing. 
-// This resolves the 'auth/invalid-api-key' error in environments where only one key is provided.
 const apiKey = getEnv('FIREBASE_API_KEY') || getEnv('API_KEY');
 
 const config = {
@@ -46,25 +48,31 @@ const db = getFirestore(app);
 const functions = getFunctions(app);
 const googleProvider = new GoogleAuthProvider();
 
+// Ensure local persistence is set (helps with iOS Safari intermittent state loss)
+setPersistence(auth, browserLocalPersistence).catch((error) => {
+  console.error("Auth Persistence Error:", error);
+});
+
 /**
  * Authentication Helper
- * Detects iOS and in-app browsers to decide between Popup and Redirect login.
+ * Prefers Popup flow to avoid page reloads and redirect loops.
+ * Falls back to Redirect only if necessary.
  */
 export const signInWithGoogle = async () => {
-  const ua = navigator.userAgent || "";
-  const platform = (navigator as any).platform || "";
-  
-  // Robust detection for iOS (iPhone, iPad, iPod) and iPadOS (MacIntel with touch)
-  const isIOS = /iPad|iPhone|iPod/.test(ua) || 
-                (platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  
-  // Detection for common in-app browsers (Facebook, Instagram, etc.) that block popups
-  const isInApp = /FBAN|FBAV|Instagram|Messenger|TikTok/.test(ua);
-
-  if (isIOS || isInApp) {
-    return signInWithRedirect(auth, googleProvider);
-  } else {
-    return signInWithPopup(auth, googleProvider);
+  try {
+    // Attempt Popup login first (works on modern iOS/Android)
+    return await signInWithPopup(auth, googleProvider);
+  } catch (error: any) {
+    console.warn("Popup sign-in failed, attempting redirect fallback...", error.code);
+    
+    // Fallback to redirect if popup is blocked or environment doesn't support it
+    if (
+      error.code === 'auth/popup-blocked' || 
+      error.code === 'auth/operation-not-supported-in-this-environment'
+    ) {
+      return signInWithRedirect(auth, googleProvider);
+    }
+    throw error;
   }
 };
 
@@ -80,7 +88,7 @@ export {
   query,
   where,
   deleteDoc, 
-  doc,
+  doc, 
   onSnapshot,
   httpsCallable,
   getRedirectResult
