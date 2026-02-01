@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { Workout } from "./types";
 
@@ -54,16 +53,13 @@ const WORKOUT_SCHEMA = {
 } as const;
 
 export const processWorkoutScreenshots = async (images: { base64: string, timestamp: number }[]): Promise<Workout[]> => {
-  // Use the API Key from the environment variable as per standard security practices.
-  // We explicitly check both process.env and import.meta.env to support various build tools (CRA/Vite).
-  const API_KEY = process.env.API_KEY || (import.meta as any).env?.VITE_API_KEY;
-
-  if (!API_KEY) {
-    throw new Error("API Key is missing. Please ensure your environment variables are configured correctly.");
+  // Directly use the environment variable as per hard requirement.
+  if (!process.env.API_KEY) {
+    throw new Error("API Key is missing from the environment. Please ensure process.env.API_KEY is configured.");
   }
 
   try {
-    const ai = new GoogleGenAI({ apiKey: API_KEY });
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const model = "gemini-3-pro-preview";
 
     const prompt = `Analyze these Whoop Strength Trainer screenshots.
@@ -75,7 +71,6 @@ export const processWorkoutScreenshots = async (images: { base64: string, timest
     const parts = [
       { text: prompt },
       ...images.map((img) => {
-        // Dynamic mime-type detection to support PNG, JPEG, WEBP, etc.
         const base64Data = img.base64.split(",")[1] || img.base64;
         const mimeMatch = img.base64.match(/^data:(.*);base64,/);
         const mimeType = mimeMatch ? mimeMatch[1] : "image/png";
@@ -98,14 +93,12 @@ export const processWorkoutScreenshots = async (images: { base64: string, timest
 
     let text = response.text || "[]";
     
-    // Safety: Strip markdown code blocks if the model includes them
     if (text.trim().startsWith("```")) {
       text = text.replace(/^```(json)?/, "").replace(/```$/, "");
     }
 
     const rawData = JSON.parse(text);
 
-    // Transform raw AI data into the frontend Workout type
     return rawData.map((r: any, idx: number) => ({
       id: `w-${Date.now()}-${idx}`,
       date: r.workoutDate || new Date().toISOString(),
