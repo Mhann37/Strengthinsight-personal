@@ -22,6 +22,7 @@ import History from './components/History';
 import Analytics from './components/Analytics';
 import DataExport from './components/DataExport';
 import MuscleGroups from './components/MuscleGroups';
+import Settings from './components/Settings';
 import Login from './components/Login';
 import { 
   ChartBarIcon, 
@@ -33,7 +34,8 @@ import {
   TableCellsIcon,
   ArrowRightOnRectangleIcon,
   UserIcon,
-  LockClosedIcon
+  LockClosedIcon,
+  Cog6ToothIcon
 } from '@heroicons/react/24/outline';
 
 const App: React.FC = () => {
@@ -47,33 +49,41 @@ const App: React.FC = () => {
   useEffect(() => {
     let isMounted = true;
 
-    const initAuth = async () => {
-      try {
-        // CRITICAL: On iOS/In-App browsers, we must wait for the redirect result 
-        // BEFORE checking the general auth state. This prevents a race condition 
-        // where onAuthStateChanged fires with 'null' while the redirect is still being parsed.
-        await getRedirectResult(auth);
-      } catch (error) {
-        console.error("Sign-in Redirect Finalization Error:", error);
-      }
+    // This promise handles the redirect result (from Google Auth on iOS)
+    // We start it immediately but don't let it block the initial UI if a user is already cached.
+    const redirectPromise = getRedirectResult(auth).catch((error) => {
+      console.error("Sign-in Redirect Error:", error);
+    });
 
-      // Only subscribe to auth changes AFTER redirect result is processed
-      const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
+      if (!isMounted) return;
+
+      if (currentUser) {
+        // If we have a user immediately (cached), we are good to go.
+        setUser(currentUser);
+        setLoading(false);
+      } else {
+        // If currentUser is null, it MIGHT be because we are in the middle of a redirect flow.
+        // We must wait for the redirect result to process before deciding the user is truly logged out.
+        await redirectPromise;
+        
         if (isMounted) {
-          setUser(currentUser);
+          // Check auth.currentUser explicitly after the promise resolves
+          const resolvedUser = auth.currentUser;
+          if (resolvedUser) {
+             setUser(resolvedUser);
+          } else {
+             setUser(null);
+             setWorkouts([]);
+          }
           setLoading(false);
-          if (!currentUser) setWorkouts([]);
         }
-      });
-
-      return unsubscribeAuth;
-    };
-
-    const authPromise = initAuth();
+      }
+    });
 
     return () => {
       isMounted = false;
-      authPromise.then(unsubscribe => unsubscribe && unsubscribe());
+      unsubscribeAuth();
     };
   }, []);
 
@@ -162,9 +172,9 @@ const App: React.FC = () => {
 
   if (!user) return <Login />;
 
-  const NavItem = ({ id, label, icon: Icon, isBeta }: { id: AppView, label: string, icon: any, isBeta?: boolean }) => (
+  const NavItem = ({ id, label, icon: Icon, isBeta }: { id: AppView | 'settings', label: string, icon: any, isBeta?: boolean }) => (
     <button
-      onClick={() => { setView(id); setIsSidebarOpen(false); }}
+      onClick={() => { setView(id as AppView); setIsSidebarOpen(false); }}
       className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all w-full text-left relative ${
         view === id 
         ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' 
@@ -209,8 +219,9 @@ const App: React.FC = () => {
           <NavItem id="muscleGroups" label="Muscle Groups" icon={UserIcon} isBeta={true} />
           <NavItem id="history" label="Workout Logs" icon={ClockIcon} />
           
-          <div className="pt-4 mt-4 border-t border-slate-800">
+          <div className="pt-4 mt-4 border-t border-slate-800 space-y-1">
              <NavItem id="export" label="Export Data" icon={TableCellsIcon} />
+             <NavItem id="settings" label="Settings" icon={Cog6ToothIcon} />
           </div>
         </nav>
 
@@ -253,6 +264,7 @@ const App: React.FC = () => {
               {view === 'history' && <History workouts={workouts} onDelete={deleteWorkout} />}
               {view === 'analytics' && <Analytics workouts={workouts} />}
               {view === 'export' && <DataExport workouts={workouts} />}
+              {view === 'settings' && <Settings />}
             </>
           )}
         </div>

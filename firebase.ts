@@ -1,4 +1,3 @@
-
 import { initializeApp } from "firebase/app";
 import { 
   getAuth, 
@@ -28,8 +27,12 @@ const getEnv = (key: string): string | undefined => {
   return env[key] || env[`VITE_${key}`] || env[`REACT_APP_${key}`];
 };
 
+// Fallback to API_KEY if FIREBASE_API_KEY is missing. 
+// This resolves the 'auth/invalid-api-key' error in environments where only one key is provided.
+const apiKey = getEnv('FIREBASE_API_KEY') || getEnv('API_KEY');
+
 const config = {
-  apiKey: getEnv('FIREBASE_API_KEY'),
+  apiKey: apiKey,
   authDomain: getEnv('FIREBASE_AUTH_DOMAIN'),
   projectId: getEnv('FIREBASE_PROJECT_ID'),
   storageBucket: getEnv('FIREBASE_STORAGE_BUCKET'),
@@ -76,7 +79,7 @@ export {
   addDoc,
   query,
   where,
-  deleteDoc,
+  deleteDoc, 
   doc,
   onSnapshot,
   httpsCallable,
