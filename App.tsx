@@ -48,36 +48,54 @@ const App: React.FC = () => {
 
   useEffect(() => {
     let isMounted = true;
+    let redirectChecked = false;
+    let authStateChecked = false;
 
-    // This promise handles the redirect result (from Google Auth on iOS)
-    // We start it immediately but don't let it block the initial UI if a user is already cached.
-    const redirectPromise = getRedirectResult(auth).catch((error) => {
-      console.error("Sign-in Redirect Error:", error);
-    });
+    // Function to decide if we can stop loading
+    const tryFinishLoading = () => {
+      if (!isMounted) return;
+      // We stop loading if:
+      // 1. We have a user (confirmed login)
+      // 2. OR we have checked both redirect result AND current auth state (confirmed logout)
+      if (auth.currentUser) {
+        setLoading(false);
+      } else if (redirectChecked && authStateChecked) {
+        setLoading(false);
+      }
+    };
 
-    const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
+    // 1. Check for redirect result (handles returning from Google Auth flow)
+    getRedirectResult(auth)
+      .then((result) => {
+        if (isMounted) {
+          redirectChecked = true;
+          // If redirect provided a user, onAuthStateChanged will handle the user set.
+          // We just mark check as done.
+          tryFinishLoading();
+        }
+      })
+      .catch((error) => {
+        console.error("Redirect Error:", error);
+        if (isMounted) {
+          redirectChecked = true;
+          tryFinishLoading();
+        }
+      });
+
+    // 2. Listen for ongoing auth state changes
+    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       if (!isMounted) return;
 
       if (currentUser) {
-        // If we have a user immediately (cached), we are good to go.
         setUser(currentUser);
+        // If we have a user, we are definitely done loading
         setLoading(false);
       } else {
-        // If currentUser is null, it MIGHT be because we are in the middle of a redirect flow.
-        // We must wait for the redirect result to process before deciding the user is truly logged out.
-        await redirectPromise;
-        
-        if (isMounted) {
-          // Check auth.currentUser explicitly after the promise resolves
-          const resolvedUser = auth.currentUser;
-          if (resolvedUser) {
-             setUser(resolvedUser);
-          } else {
-             setUser(null);
-             setWorkouts([]);
-          }
-          setLoading(false);
-        }
+        setUser(null);
+        setWorkouts([]);
+        authStateChecked = true;
+        // If no user, we wait for redirect check to finish before showing Login
+        tryFinishLoading();
       }
     });
 
