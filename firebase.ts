@@ -1,3 +1,4 @@
+
 import { initializeApp } from "firebase/app";
 import { 
   getAuth, 
@@ -28,8 +29,7 @@ const getEnv = (key: string): string | undefined => {
 };
 
 const config = {
-  // Prioritize process.env.API_KEY as per core instructions, fallback to Firebase specific keys
-  apiKey: process.env.API_KEY || getEnv('FIREBASE_API_KEY') || getEnv('API_KEY'),
+  apiKey: getEnv('FIREBASE_API_KEY'),
   authDomain: getEnv('FIREBASE_AUTH_DOMAIN'),
   projectId: getEnv('FIREBASE_PROJECT_ID'),
   storageBucket: getEnv('FIREBASE_STORAGE_BUCKET'),
