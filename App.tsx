@@ -22,7 +22,6 @@ import History from './components/History';
 import Analytics from './components/Analytics';
 import DataExport from './components/DataExport';
 import MuscleGroups from './components/MuscleGroups';
-import Settings from './components/Settings';
 import Login from './components/Login';
 import { 
   ChartBarIcon, 
@@ -34,8 +33,7 @@ import {
   TableCellsIcon,
   ArrowRightOnRectangleIcon,
   UserIcon,
-  LockClosedIcon,
-  Cog6ToothIcon
+  LockClosedIcon
 } from '@heroicons/react/24/outline';
 
 const App: React.FC = () => {
@@ -190,9 +188,9 @@ const App: React.FC = () => {
 
   if (!user) return <Login />;
 
-  const NavItem = ({ id, label, icon: Icon, isBeta }: { id: AppView | 'settings', label: string, icon: any, isBeta?: boolean }) => (
+  const NavItem = ({ id, label, icon: Icon, isBeta }: { id: AppView, label: string, icon: any, isBeta?: boolean }) => (
     <button
-      onClick={() => { setView(id as AppView); setIsSidebarOpen(false); }}
+      onClick={() => { setView(id); setIsSidebarOpen(false); }}
       className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all w-full text-left relative ${
         view === id 
         ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' 
@@ -239,7 +237,6 @@ const App: React.FC = () => {
           
           <div className="pt-4 mt-4 border-t border-slate-800 space-y-1">
              <NavItem id="export" label="Export Data" icon={TableCellsIcon} />
-             <NavItem id="settings" label="Settings" icon={Cog6ToothIcon} />
           </div>
         </nav>
 
@@ -282,7 +279,6 @@ const App: React.FC = () => {
               {view === 'history' && <History workouts={workouts} onDelete={deleteWorkout} />}
               {view === 'analytics' && <Analytics workouts={workouts} />}
               {view === 'export' && <DataExport workouts={workouts} />}
-              {view === 'settings' && <Settings />}
             </>
           )}
         </div>
