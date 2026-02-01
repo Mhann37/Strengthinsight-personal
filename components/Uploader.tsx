@@ -14,13 +14,14 @@ import {
   DevicePhoneMobileIcon,
   ChevronLeftIcon,
   LockClosedIcon,
-  TagIcon
+  TagIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline';
 
 const MUSCLE_GROUPS = ['Chest', 'Back', 'Shoulders', 'Arms', 'Legs', 'Core'];
 
 interface UploaderProps {
-  onWorkoutsExtracted: (workouts: Workout[]) => void;
+  onWorkoutsExtracted: (workouts: Workout[]) => Promise<void>;
 }
 
 interface FileWithPreview {
@@ -36,6 +37,7 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [pendingWorkouts, setPendingWorkouts] = useState<Workout[] | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -43,6 +45,7 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
     const files = Array.from(e.target.files || []) as File[];
     if (files.length > 0) {
       setError(null);
+      setSaveError(null);
       files.forEach(file => {
         const reader = new FileReader();
         reader.onloadend = () => {
@@ -64,6 +67,7 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
     if (selectedFiles.length === 0) return;
     setIsProcessing(true);
     setError(null);
+    setSaveError(null);
     try {
       const imagesData = selectedFiles.map(f => ({
         base64: f.preview,
@@ -74,8 +78,6 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
     } catch (err: any) {
       console.error(err);
       let msg = "Failed to extract data. Please ensure the screenshots are clear.";
-      
-      // Improve error reporting for common issues
       if (err.message) {
         if (err.message.includes("API Key")) {
           msg = "API Key Error: Please check your environment configuration.";
@@ -87,7 +89,6 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
           msg = "Network Error. Please check your internet connection.";
         }
       }
-      
       setError(msg);
     } finally {
       setIsProcessing(false);
@@ -96,6 +97,7 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
 
   const handleUpdateWorkoutDate = (wIdx: number, newDate: string) => {
     if (!pendingWorkouts) return;
+    setSaveError(null);
     const updated = [...pendingWorkouts];
     updated[wIdx].date = new Date(newDate).toISOString();
     setPendingWorkouts(updated);
@@ -147,6 +149,7 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
   const confirmUpload = async () => {
     if (!pendingWorkouts || isSaving) return;
     setIsSaving(true);
+    setSaveError(null);
     try {
       const finalized = pendingWorkouts.map(w => ({
         ...w,
@@ -154,12 +157,17 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
           acc + ex.sets.reduce((sAcc, s) => sAcc + (s.reps * s.weight), 0)
         , 0)
       }));
+      // Call parent to save. If it throws (e.g. duplicate), it's caught here.
       await onWorkoutsExtracted(finalized);
+      
+      // Clear states ONLY on success
       setPendingWorkouts(null);
       setSelectedFiles([]);
       setSelectedPlatform(null);
-    } catch (err) {
-      alert("Error confirming data. Please try again.");
+    } catch (err: any) {
+      console.error("Confirmation Error:", err);
+      // Display the error clearly without removing the Verify UI
+      setSaveError(err.message || "An unexpected error occurred while saving your data.");
     } finally {
       setIsSaving(false);
     }
@@ -337,6 +345,22 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
           ))}
         </div>
 
+        {saveError && (
+          <div className="fixed bottom-28 left-1/2 -translate-x-1/2 w-full max-w-2xl px-4 z-40">
+            <div className="p-4 bg-red-950/90 border border-red-500/50 rounded-2xl flex items-center space-x-3 text-red-400 shadow-[0_0_50px_rgba(239,68,68,0.3)] backdrop-blur-xl animate-[shake_0.5s_ease-in-out_infinite]">
+              <ExclamationCircleIcon className="w-6 h-6 shrink-0" />
+              <div className="flex-1">
+                 <p className="text-xs font-black uppercase tracking-tighter mb-0.5">Save Failed</p>
+                 <p className="text-sm font-bold">{saveError}</p>
+              </div>
+              {/* Fix: Added missing XMarkIcon import to handle the close button in the error message */}
+              <button onClick={() => setSaveError(null)} className="p-1 hover:bg-white/10 rounded-lg transition-colors">
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="fixed bottom-8 left-1/2 -translate-x-1/2 w-full max-w-4xl px-4 flex space-x-4 z-30">
           <button 
             disabled={isSaving}
@@ -454,6 +478,14 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
           </>
         )}
       </button>
+      
+      <style>{`
+        @keyframes shake {
+          0%, 100% { transform: translateX(-50%) rotate(0deg); }
+          25% { transform: translateX(-51%) rotate(-1deg); }
+          75% { transform: translateX(-49%) rotate(1deg); }
+        }
+      `}</style>
     </div>
   );
 };

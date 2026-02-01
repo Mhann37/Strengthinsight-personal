@@ -12,6 +12,7 @@ import {
   deleteDoc, 
   doc, 
   onSnapshot,
+  getRedirectResult,
   User 
 } from './firebase';
 import { AppView, Workout } from './types';
@@ -43,6 +44,11 @@ const App: React.FC = () => {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
 
   useEffect(() => {
+    // Handle redirect result for iOS/In-app login flows
+    getRedirectResult(auth).catch((error) => {
+      console.error("Sign-in Redirect Error:", error);
+    });
+
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setLoading(false);
@@ -63,9 +69,11 @@ const App: React.FC = () => {
         id: doc.id
       })) as Workout[];
       
-      const sorted = fetchedWorkouts.sort((a, b) => 
-        new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()
-      );
+      const sorted = fetchedWorkouts.sort((a, b) => {
+        const timeA = a.date ? new Date(a.date).getTime() : 0;
+        const timeB = b.date ? new Date(b.date).getTime() : 0;
+        return timeB - timeA;
+      });
       
       setWorkouts(sorted);
       setDataLoading(false);
@@ -81,6 +89,21 @@ const App: React.FC = () => {
     if (!user) return;
     try {
       const workoutsRef = collection(db, 'workouts');
+      
+      // Duplicate detection: check if a workout for this exact timestamp already exists
+      for (const workout of newWorkouts) {
+        const isDuplicate = workouts.some(existing => {
+          // Compare dates by slicing to minutes for a practical "same session" check
+          const existingDate = existing.date ? existing.date.slice(0, 16) : '';
+          const newDate = workout.date ? workout.date.slice(0, 16) : '';
+          return existingDate === newDate;
+        });
+        
+        if (isDuplicate) {
+          throw new Error(`A session for ${new Date(workout.date).toLocaleDateString()} at ${new Date(workout.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} is already in your history. Please adjust the time or date.`);
+        }
+      }
+
       const savePromises = newWorkouts.map(workout => {
         const { id, ...data } = workout; 
         return addDoc(workoutsRef, {
@@ -91,8 +114,9 @@ const App: React.FC = () => {
       });
       await Promise.all(savePromises);
       setView('dashboard');
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving workouts:", error);
+      throw error; // Let Uploader component handle the error display
     }
   };
 

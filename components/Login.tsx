@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { signInWithPopup, auth, googleProvider } from '../firebase';
+import { signInWithGoogle } from '../firebase';
 import { BoltIcon, ChartBarIcon, SparklesIcon } from '@heroicons/react/24/solid';
 
 const Login: React.FC = () => {
@@ -11,7 +11,7 @@ const Login: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      await signInWithPopup(auth, googleProvider);
+      await signInWithGoogle();
     } catch (err: any) {
       console.error(err);
       setError("Failed to sign in. Please check your connection or configuration.");
@@ -40,7 +40,7 @@ const Login: React.FC = () => {
           <div className="space-y-4">
             <div className="flex items-center space-x-4 p-5 bg-slate-950/40 rounded-2xl border border-slate-800/50 group hover:border-blue-500/30 transition-all duration-300">
                <div className="bg-blue-500/10 p-3 rounded-xl text-blue-500 group-hover:scale-110 transition-transform">
-                 <BoltIcon className="w-6 h-6" />
+                 < BoltIcon className="w-6 h-6" />
                </div>
                <div>
                  <h3 className="font-bold text-sm text-slate-200">Vision Analysis</h3>
