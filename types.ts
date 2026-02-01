@@ -15,6 +15,7 @@ export interface Exercise {
 
 export interface Workout {
   id: string;
+  userId?: string; // Links workout to specific auth user
   date: string; // ISO string
   totalVolume: number;
   exercises: Exercise[];

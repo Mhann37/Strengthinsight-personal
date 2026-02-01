@@ -32,7 +32,8 @@ import {
   XMarkIcon,
   TableCellsIcon,
   ArrowRightOnRectangleIcon,
-  UserIcon
+  UserIcon,
+  LockClosedIcon
 } from '@heroicons/react/24/outline';
 
 const App: React.FC = () => {
@@ -44,17 +45,36 @@ const App: React.FC = () => {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
 
   useEffect(() => {
-    // Handle redirect result for iOS/In-app login flows
-    getRedirectResult(auth).catch((error) => {
-      console.error("Sign-in Redirect Error:", error);
-    });
+    let isMounted = true;
 
-    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      setLoading(false);
-      if (!currentUser) setWorkouts([]);
-    });
-    return () => unsubscribeAuth();
+    const initAuth = async () => {
+      try {
+        // CRITICAL: On iOS/In-App browsers, we must wait for the redirect result 
+        // BEFORE checking the general auth state. This prevents a race condition 
+        // where onAuthStateChanged fires with 'null' while the redirect is still being parsed.
+        await getRedirectResult(auth);
+      } catch (error) {
+        console.error("Sign-in Redirect Finalization Error:", error);
+      }
+
+      // Only subscribe to auth changes AFTER redirect result is processed
+      const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+        if (isMounted) {
+          setUser(currentUser);
+          setLoading(false);
+          if (!currentUser) setWorkouts([]);
+        }
+      });
+
+      return unsubscribeAuth;
+    };
+
+    const authPromise = initAuth();
+
+    return () => {
+      isMounted = false;
+      authPromise.then(unsubscribe => unsubscribe && unsubscribe());
+    };
   }, []);
 
   useEffect(() => {
@@ -90,17 +110,15 @@ const App: React.FC = () => {
     try {
       const workoutsRef = collection(db, 'workouts');
       
-      // Duplicate detection: check if a workout for this exact timestamp already exists
       for (const workout of newWorkouts) {
         const isDuplicate = workouts.some(existing => {
-          // Compare dates by slicing to minutes for a practical "same session" check
           const existingDate = existing.date ? existing.date.slice(0, 16) : '';
           const newDate = workout.date ? workout.date.slice(0, 16) : '';
           return existingDate === newDate;
         });
         
         if (isDuplicate) {
-          throw new Error(`A session for ${new Date(workout.date).toLocaleDateString()} at ${new Date(workout.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} is already in your history. Please adjust the time or date.`);
+          throw new Error(`A session for ${new Date(workout.date).toLocaleDateString()} at ${new Date(workout.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} is already in your history.`);
         }
       }
 
@@ -116,7 +134,7 @@ const App: React.FC = () => {
       setView('dashboard');
     } catch (error: any) {
       console.error("Error saving workouts:", error);
-      throw error; // Let Uploader component handle the error display
+      throw error; 
     }
   };
 
@@ -134,7 +152,10 @@ const App: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950">
-        <div className="w-12 h-12 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin"></div>
+        <div className="flex flex-col items-center space-y-4">
+          <div className="w-12 h-12 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin"></div>
+          <p className="text-slate-500 text-sm font-medium animate-pulse">Authenticating Session...</p>
+        </div>
       </div>
     );
   }
@@ -204,7 +225,10 @@ const App: React.FC = () => {
             )}
             <div className="flex-1 min-w-0">
                <p className="text-sm font-bold text-slate-200 truncate">{user.displayName || 'Athlete'}</p>
-               <p className="text-xs text-slate-500 truncate">{user.email}</p>
+               <div className="flex items-center space-x-1.5 text-slate-500">
+                 <p className="text-xs truncate max-w-[120px]">{user.email}</p>
+                 <LockClosedIcon className="w-3 h-3 text-slate-600" title="Data Isolated" />
+               </div>
             </div>
           </div>
           <button onClick={handleLogout} className="flex items-center space-x-3 px-4 py-3 rounded-xl text-red-400 hover:bg-red-500/10 w-full transition-colors">

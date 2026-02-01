@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { signInWithGoogle } from '../firebase';
-import { BoltIcon, ChartBarIcon, SparklesIcon } from '@heroicons/react/24/solid';
+import { BoltIcon, ChartBarIcon } from '@heroicons/react/24/solid';
 
 const Login: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +33,7 @@ const Login: React.FC = () => {
             <span className="text-4xl font-black text-white italic">S</span>
           </div>
           <h1 className="text-4xl font-extrabold tracking-tight text-white mb-3 text-shadow-lg">StrengthInsight</h1>
-          <p className="text-slate-400 text-lg">AI-powered analytics for your Whoop data.</p>
+          <p className="text-slate-400 text-lg">AI-powered analytics for your Strength Trainer data.</p>
         </div>
 
         <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800 rounded-[2.5rem] p-8 md:p-10 shadow-3xl space-y-8">
@@ -85,13 +85,6 @@ const Login: React.FC = () => {
               {error}
             </div>
           )}
-        </div>
-
-        <div className="text-center">
-          <p className="text-slate-600 text-sm flex items-center justify-center space-x-2">
-            <SparklesIcon className="w-4 h-4" />
-            <span>Join 2,000+ athletes tracking smarter</span>
-          </p>
         </div>
       </div>
     </div>

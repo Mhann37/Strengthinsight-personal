@@ -1,4 +1,3 @@
-
 import { initializeApp } from "firebase/app";
 import { 
   getAuth, 
@@ -28,20 +27,15 @@ const getEnv = (key: string): string | undefined => {
   return env[key] || env[`VITE_${key}`] || env[`REACT_APP_${key}`];
 };
 
-// Robust config mapping to prevent 'invalid-api-key' errors
 const config = {
-  apiKey: getEnv('FIREBASE_API_KEY') || getEnv('API_KEY'),
+  // Prioritize process.env.API_KEY as per core instructions, fallback to Firebase specific keys
+  apiKey: process.env.API_KEY || getEnv('FIREBASE_API_KEY') || getEnv('API_KEY'),
   authDomain: getEnv('FIREBASE_AUTH_DOMAIN'),
   projectId: getEnv('FIREBASE_PROJECT_ID'),
   storageBucket: getEnv('FIREBASE_STORAGE_BUCKET'),
   messagingSenderId: getEnv('FIREBASE_MESSAGING_SENDER_ID'),
   appId: getEnv('FIREBASE_APP_ID')
 };
-
-// Check if critical config is missing and log a helpful warning
-if (!config.apiKey) {
-  console.warn("Firebase API Key is missing. Check your environment variables.");
-}
 
 const app = initializeApp(config);
 const auth = getAuth(app);
@@ -57,11 +51,11 @@ export const signInWithGoogle = async () => {
   const ua = navigator.userAgent || "";
   const platform = (navigator as any).platform || "";
   
-  // Detection for iOS (iPhone, iPad, iPod) and iPadOS (MacIntel with touch)
+  // Robust detection for iOS (iPhone, iPad, iPod) and iPadOS (MacIntel with touch)
   const isIOS = /iPad|iPhone|iPod/.test(ua) || 
                 (platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   
-  // Detection for common in-app browsers that block popups
+  // Detection for common in-app browsers (Facebook, Instagram, etc.) that block popups
   const isInApp = /FBAN|FBAV|Instagram|Messenger|TikTok/.test(ua);
 
   if (isIOS || isInApp) {
