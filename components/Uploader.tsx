@@ -75,7 +75,7 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
       }));
       const raw = await processWorkoutScreenshots(imagesData);
 
-// Try common shapes first
+// 1) Normalize into an array (or null)
 let normalized: any[] | null =
   Array.isArray(raw) ? raw :
   Array.isArray((raw as any)?.workouts) ? (raw as any).workouts :
@@ -87,7 +87,7 @@ let normalized: any[] | null =
   Array.isArray((raw as any)?.result?.workouts) ? (raw as any).result.workouts :
   null;
 
-// If it returned a single workout object, wrap it
+// 2) If it returned a single workout object, wrap it
 if (!normalized && raw && typeof raw === "object") {
   const maybeWorkout = raw as any;
   if ((maybeWorkout.workoutDate || maybeWorkout.date) && maybeWorkout.exercises) {
@@ -95,9 +95,28 @@ if (!normalized && raw && typeof raw === "object") {
   }
 }
 
+// 3) HARD GUARD: stop here if not an array
 if (!Array.isArray(normalized)) {
-  throw new Error("Invalid analysis response (expected a workout list). Please try again.");
+  console.warn("Unexpected AI response shape:", raw);
+  throw new Error("We couldn't extract a workout from these screenshots. Try clearer screenshots or fewer images.");
 }
+
+// 4) Only now is it safe to touch `w`
+const cleanedWorkouts = normalized
+  .filter(Boolean)
+  .map((w: any) => ({
+    ...w,
+    date: w.date ?? w.workoutDate,
+    exercises: Array.isArray(w.exercises) ? w.exercises : [],
+  }))
+  .filter((w: any) => typeof w.date === "string" && w.date.length > 0);
+
+if (cleanedWorkouts.length === 0) {
+  console.warn("Normalized workouts empty:", normalized);
+  throw new Error("No workouts detected. Try clearer screenshots or fewer images.");
+}
+
+setPendingWorkouts(cleanedWorkouts as any);
 
 const cleanedWorkouts = normalized
   .filter(Boolean)
