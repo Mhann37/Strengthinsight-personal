@@ -1,5 +1,6 @@
 {
   "name": "functions",
+  "type": "module",
   "scripts": {
     "lint": "echo 'Linting skipped'",
     "build": "tsc",
