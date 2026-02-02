@@ -103,8 +103,9 @@ export const processWorkoutScreenshots = onCall(
     }
 
     // B. Beta Access Control
+    // If list is empty (default), we skip this check and allow everyone.
     const allowedUids = betaTesterList.value();
-    if (allowedUids.length > 0) {
+    if (allowedUids && allowedUids.length > 0) {
       const uids = allowedUids.split(",").map(id => id.trim());
       if (!uids.includes(request.auth.uid)) {
         throw new HttpsError("permission-denied", "This feature is currently restricted to beta testers.");
@@ -129,7 +130,13 @@ export const processWorkoutScreenshots = onCall(
 
     try {
       // D. Initialize Gemini
-      const ai = new GoogleGenAI({ apiKey: geminiApiKey.value() });
+      const apiKey = geminiApiKey.value();
+      if (!apiKey) {
+         console.error("Gemini API Key is missing from secrets configuration.");
+         throw new HttpsError("internal", "Server Configuration Error: GEMINI_API_KEY is missing.");
+      }
+
+      const ai = new GoogleGenAI({ apiKey: apiKey });
       const model = "gemini-3-flash-preview"; 
 
       // E. Construct Prompt
@@ -188,6 +195,12 @@ export const processWorkoutScreenshots = onCall(
     } catch (error: any) {
       console.error("Gemini Processing Error:", JSON.stringify(error, null, 2));
       
+      // Handle API Key or Auth errors specifically
+      // We pass the upstream error message (error.message) to the client so they know exactly WHY it failed
+      if (error.status === 403 || error.status === 401 || (error.message && error.message.toLowerCase().includes("api key"))) {
+        throw new HttpsError("internal", `AI Access Error: ${error.message}`);
+      }
+
       // Return the actual upstream error message to help debugging
       // This is crucial for "Image format not supported" errors (400)
       if (error.status === 400 || (error.message && error.message.includes("400"))) {
