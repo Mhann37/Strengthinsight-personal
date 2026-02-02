@@ -132,9 +132,8 @@ export const processWorkoutScreenshots = onCall(
       // D. Initialize Gemini
       const ai = new GoogleGenAI({ apiKey: geminiApiKey.value() });
       
-      // Use 'gemini-flash-latest' for production reliability and speed with vision tasks.
-      // 'gemini-3-pro-preview' can be slower or more restricted.
-      const model = "gemini-flash-latest"; 
+      // Use 'gemini-3-flash-preview' as it is the recommended model for basic tasks and offers high speed/low latency.
+      const model = "gemini-3-flash-preview"; 
 
       // E. Construct Prompt
       const promptText = `
