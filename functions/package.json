@@ -21,7 +21,8 @@
   },
   "devDependencies": {
     "typescript": "^4.9.0",
-    "firebase-functions-test": "^3.1.0"
+    "firebase-functions-test": "^3.1.0",
+    "@modelcontextprotocol/sdk": "latest"
   },
   "private": true
 }
