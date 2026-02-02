@@ -73,8 +73,36 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
         base64: f.preview,
         timestamp: f.file.lastModified
       }));
-      const extractedWorkouts = await processWorkoutScreenshots(imagesData);
-      setPendingWorkouts(extractedWorkouts);
+      const raw = await processWorkoutScreenshots(imagesData);
+
+// Normalize possible response shapes (future-proof)
+const normalized =
+  Array.isArray(raw) ? raw :
+  Array.isArray((raw as any)?.workouts) ? (raw as any).workouts :
+  Array.isArray((raw as any)?.data) ? (raw as any).data :
+  null;
+
+if (!Array.isArray(normalized)) {
+  throw new Error("Invalid analysis response (expected a workout list). Please try again.");
+}
+
+// Light validation + cleanup to prevent render crashes
+const cleaned = normalized
+  .filter(Boolean)
+  .map((w: any) => ({
+    ...w,
+    // Accept either date or workoutDate keys
+    date: w.date ?? w.workoutDate,
+    exercises: Array.isArray(w.exercises) ? w.exercises : [],
+  }))
+  .filter((w: any) => typeof w.date === "string" && w.date.length > 0);
+
+if (cleaned.length === 0) {
+  throw new Error("No workouts detected. Please try clearer screenshots.");
+}
+
+setPendingWorkouts(cleaned as any);
+;
     } catch (err: any) {
       console.error(err);
       let msg = "Failed to extract data. Please ensure the screenshots are clear.";
