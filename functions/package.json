@@ -20,7 +20,7 @@
     "@google/genai": "latest"
   },
   "devDependencies": {
-    "typescript": "^4.9.0",
+    "typescript": "^5.0.0",
     "firebase-functions-test": "^3.1.0",
     "@modelcontextprotocol/sdk": "latest"
   },
