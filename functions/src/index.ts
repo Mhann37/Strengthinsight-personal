@@ -4,8 +4,6 @@ import { GoogleGenAI, Type } from "@google/genai";
 
 // 1. Configuration
 const geminiApiKey = defineSecret("GEMINI_API_KEY");
-// Optional: Comma-separated list of UIDs allowed to use the beta feature
-const betaTesterList = defineString("BETA_TESTER_UIDS", { default: "" });
 
 // 2. Interfaces matches Client Logic
 interface SetRecord {
