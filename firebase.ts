@@ -11,6 +11,7 @@ import {
   setPersistence
 } from "firebase/auth";
 import type { User } from "firebase/auth";
+// @ts-ignore
 import {
   getFirestore,
   collection,
