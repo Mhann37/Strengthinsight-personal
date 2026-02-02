@@ -31,12 +31,14 @@ export const processWorkoutScreenshots = async (images: { base64: string, timest
       let mimeType = "image/png";
       let base64 = img.base64;
 
-      // Extract real MIME type if present in Data URL
+      // Extract real MIME type and clean Base64
       if (img.base64.includes(',')) {
         const parts = img.base64.split(',');
-        base64 = parts[1];
+        base64 = parts[1]; // The raw base64 data
+        
+        // Try to find the mime type in the header
         const match = parts[0].match(/:(.*?);/);
-        if (match) {
+        if (match && match[1]) {
           mimeType = match[1];
         }
       }
@@ -89,15 +91,11 @@ export const processWorkoutScreenshots = async (images: { base64: string, timest
     if (error.code === 'permission-denied') {
       throw new Error("Access Denied: This feature is restricted.");
     }
-    if (error.code === 'internal') {
-      // Return the message provided by the backend if available
-      if (error.message && !error.message.includes("internal")) {
+    if (error.code === 'internal' || error.code === 'invalid-argument') {
+      // Use the raw message from the backend if available
+      if (error.message) {
          throw new Error(error.message);
       }
-      throw new Error("Server Error: The AI service failed to process the request. Try again.");
-    }
-    if (error.code === 'invalid-argument') {
-      throw new Error("Validation Error: " + (error.message || "Invalid image data."));
     }
     if (error.message && error.message.includes("quota")) {
       throw new Error("Service Busy: High traffic volume. Please try again later.");

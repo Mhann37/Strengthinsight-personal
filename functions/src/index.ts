@@ -32,7 +32,6 @@ interface WorkoutResponse {
 }
 
 // 3. Strict Schema Definition for Gemini 
-// This ensures the AI returns exactly what our app expects
 const RESPONSE_SCHEMA = {
   type: Type.OBJECT,
   properties: {
@@ -93,7 +92,7 @@ export const processWorkoutScreenshots = onCall(
   { 
     secrets: [geminiApiKey],
     maxInstances: 10,
-    timeoutSeconds: 120, // Increased timeout for vision tasks
+    timeoutSeconds: 120, 
     memory: "1GiB", 
     region: "us-central1"
   },
@@ -131,8 +130,6 @@ export const processWorkoutScreenshots = onCall(
     try {
       // D. Initialize Gemini
       const ai = new GoogleGenAI({ apiKey: geminiApiKey.value() });
-      
-      // Use 'gemini-3-flash-preview' as it is the recommended model for basic tasks and offers high speed/low latency.
       const model = "gemini-3-flash-preview"; 
 
       // E. Construct Prompt
@@ -143,18 +140,25 @@ export const processWorkoutScreenshots = onCall(
         3. INTELLIGENTLY ASSIGN 'muscleDistributions' (Chest, Back, Shoulders, Arms, Legs, Core) with a factor (0.0-1.0) based on kinesiology.
         4. CRITICAL: If weights are in LBS, convert them to KG (1 lb = 0.453592 kg) and set unit to 'kg'.
         5. Return STRICT JSON matching the schema.
-        6. Do not hallucinate data. If unreadable, ignore the specific unreadable item.
       `;
 
-      // F. Build Payload Parts
+      // F. Build Payload Parts with strict MIME sanitization
       const parts = [
         { text: promptText },
-        ...images.map((img: any) => ({
-          inlineData: {
-            mimeType: img.mimeType || "image/png",
-            data: img.base64
+        ...images.map((img: any) => {
+          // Fallback to jpeg if mimeType is missing or generic
+          let mimeType = img.mimeType;
+          if (!mimeType || !mimeType.startsWith("image/")) {
+            mimeType = "image/jpeg";
           }
-        }))
+          
+          return {
+            inlineData: {
+              mimeType: mimeType,
+              data: img.base64
+            }
+          };
+        })
       ];
 
       // G. Call AI
@@ -164,33 +168,32 @@ export const processWorkoutScreenshots = onCall(
         config: {
           responseMimeType: "application/json",
           responseSchema: RESPONSE_SCHEMA as any,
-          temperature: 0 // Zero temperature for maximum determinism
+          temperature: 0
         }
       });
 
       // H. Parse Response
       const text = response.text;
       if (!text) {
-        console.error("Gemini returned empty text response", response);
         throw new Error("AI returned empty response.");
       }
 
       const rawData = JSON.parse(text) as WorkoutResponse;
 
-      // I. Return structured data to client
       return {
         workoutDate: rawData.workoutDate,
         exercises: rawData.exercises
       };
 
     } catch (error: any) {
-      console.error("Gemini Processing Error:", error);
+      console.error("Gemini Processing Error:", JSON.stringify(error, null, 2));
       
+      // Return the actual upstream error message to help debugging
+      // This is crucial for "Image format not supported" errors (400)
       if (error.status === 400 || (error.message && error.message.includes("400"))) {
-        throw new HttpsError("invalid-argument", "Image format not supported or corrupted.");
+        throw new HttpsError("invalid-argument", `AI Rejected Request: ${error.message}`);
       }
       
-      // Pass the actual error message back during development for easier debugging
       throw new HttpsError("internal", `AI Error: ${error.message || "Unknown error occurred"}`);
     }
   }
