@@ -1,5 +1,5 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
-import { defineSecret, defineString } from "firebase-functions/params";
+import { defineSecret } from "firebase-functions/params";
 import { GoogleGenAI, Type } from "@google/genai";
 
 // 1. Configuration
@@ -98,16 +98,6 @@ export const processWorkoutScreenshots = onCall(
     // A. Authentication Check
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "User must be logged in to process workouts.");
-    }
-
-    // B. Beta Access Control
-    // If list is empty (default), we skip this check and allow everyone.
-    const allowedUids = betaTesterList.value();
-    if (allowedUids && allowedUids.length > 0) {
-      const uids = allowedUids.split(",").map(id => id.trim());
-      if (!uids.includes(request.auth.uid)) {
-        throw new HttpsError("permission-denied", "This feature is currently restricted to beta testers.");
-      }
     }
 
     // C. Input Validation
