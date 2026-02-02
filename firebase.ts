@@ -44,7 +44,7 @@ const config = {
   appId: getEnv('FIREBASE_APP_ID')
 };
 
-const app = initializeApp(config);
+export const app = initializeApp(config);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const functions = getFunctions(app);
