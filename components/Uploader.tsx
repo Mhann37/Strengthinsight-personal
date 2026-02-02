@@ -99,7 +99,7 @@ if (!Array.isArray(normalized)) {
   throw new Error("Invalid analysis response (expected a workout list). Please try again.");
 }
 
-const cleaned = normalized
+const cleanedWorkouts = normalized
   .filter(Boolean)
   .map((w: any) => ({
     ...w,
@@ -108,7 +108,7 @@ const cleaned = normalized
   }))
   .filter((w: any) => typeof w.date === "string" && w.date.length > 0);
 
-if (cleaned.length === 0) {
+if (cleanedWorkouts.length === 0) {
   throw new Error("No workouts detected. Please try clearer screenshots.");
 }
 
