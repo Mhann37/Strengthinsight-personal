@@ -7,15 +7,15 @@ import {
   signInWithPopup 
 } from "firebase/auth";
 import type { User } from "firebase/auth";
-import { 
-  getFirestore, 
-  collection, 
-  addDoc, 
-  query, 
-  where, 
-  deleteDoc, 
-  doc, 
-  onSnapshot 
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  query,
+  where,
+  deleteDoc,
+  doc,
+  onSnapshot
 } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 

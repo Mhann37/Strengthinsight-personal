@@ -1,118 +1,90 @@
-import { GoogleGenAI, Type } from "@google/genai";
-import { Workout } from "./types";
+
+import { functions, httpsCallable } from "./firebase";
+import { Workout, Exercise } from "./types";
 
 /**
- * CLIENT-SIDE SERVICE
- * Connects directly to Gemini API to process images.
+ * SERVER-SIDE SERVICE (via Cloud Functions)
+ * Calls the deployed Firebase Cloud Function 'processWorkoutScreenshots'.
+ * The API Key is managed securely in Google Cloud Secret Manager.
  */
 
-// Schema definition matching the frontend types
-const WORKOUT_SCHEMA = {
-  type: Type.ARRAY,
-  items: {
-    type: Type.OBJECT,
-    properties: {
-      workoutDate: { type: Type.STRING },
-      exercises: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.OBJECT,
-          properties: {
-            name: { type: Type.STRING },
-            muscleDistributions: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  group: { type: Type.STRING },
-                  factor: { type: Type.NUMBER }
-                },
-                required: ["group", "factor"]
-              }
-            },
-            sets: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  setNumber: { type: Type.INTEGER },
-                  reps: { type: Type.INTEGER },
-                  weight: { type: Type.NUMBER },
-                  unit: { type: Type.STRING }
-                },
-                required: ["setNumber", "reps", "weight", "unit"]
-              }
-            }
-          },
-          required: ["name", "muscleDistributions", "sets"]
-        }
-      }
-    },
-    required: ["workoutDate", "exercises"]
-  }
-} as const;
+interface CloudFunctionResponse {
+  workoutDate: string;
+  exercises: {
+    name: string;
+    // Backend returns detailed distribution, we map to primary group
+    muscleDistributions: { group: string; factor: number }[];
+    sets: { setNumber: number; reps: number; weight: number; unit: 'kg' }[];
+  }[];
+}
 
 export const processWorkoutScreenshots = async (images: { base64: string, timestamp: number }[]): Promise<Workout[]> => {
-  // Directly use the environment variable as per hard requirement.
-  if (!process.env.API_KEY) {
-    throw new Error("API Key is missing from the environment. Please ensure process.env.API_KEY is configured.");
-  }
-
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    const model = "gemini-3-pro-preview";
+    const processFn = httpsCallable<{ images: any[], timezone: string }, CloudFunctionResponse>(
+      functions, 
+      'processWorkoutScreenshots'
+    );
 
-    const prompt = `Analyze these Whoop Strength Trainer screenshots.
-    Extract exercise names, sets, reps, and weights.
-    Use your deep knowledge of kinesiology to intelligently assign MUSCLE LOAD FACTORS (0.0 to 1.0) for relevant groups: Chest, Back, Shoulders, Arms, Legs, Core.
-    
-    IMPORTANT: Return the data as a valid JSON array matching the schema.`;
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-    const parts = [
-      { text: prompt },
-      ...images.map((img) => {
-        const base64Data = img.base64.split(",")[1] || img.base64;
-        const mimeMatch = img.base64.match(/^data:(.*);base64,/);
-        const mimeType = mimeMatch ? mimeMatch[1] : "image/png";
-        
-        return {
-          inlineData: { mimeType, data: base64Data }
-        };
-      })
-    ];
+    // Prepare payload for Cloud Function
+    const payload = images.map((img) => ({
+      base64: img.base64.includes(',') ? img.base64.split(',')[1] : img.base64,
+      mimeType: "image/png" // Simplification for prototype
+    }));
 
-    const response = await ai.models.generateContent({
-      model,
-      contents: { parts },
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: WORKOUT_SCHEMA,
-        temperature: 0.2
-      }
+    // Call the backend
+    const result = await processFn({ 
+      images: payload, 
+      timezone: timezone 
     });
 
-    let text = response.text || "[]";
+    const data = result.data;
+
+    // Transform Backend Response to Frontend Workout Type
+    const generatedWorkout: Workout = {
+      id: `w-${Date.now()}`,
+      date: data.workoutDate || new Date().toISOString(),
+      
+      // Calculate total volume based on sets
+      totalVolume: data.exercises.reduce((acc, ex) => 
+        acc + ex.sets.reduce((sAcc, s) => sAcc + (s.reps * (s.weight || 0)), 0), 0),
+      
+      exercises: data.exercises.map((ex, idx) => {
+        // Find primary muscle group (highest factor)
+        const primaryGroup = ex.muscleDistributions.sort((a, b) => b.factor - a.factor)[0]?.group || 'Other';
+
+        return {
+          id: `ex-${Date.now()}-${idx}`,
+          name: ex.name,
+          muscleGroup: primaryGroup,
+          sets: ex.sets.map(s => ({
+            ...s,
+            unit: 'kg'
+          }))
+        };
+      })
+    };
+
+    return [generatedWorkout];
+
+  } catch (error: any) {
+    console.error("Cloud Function Error:", error);
     
-    if (text.trim().startsWith("```")) {
-      text = text.replace(/^```(json)?/, "").replace(/```$/, "");
+    // Handle specific Firebase HttpsErrors
+    if (error.code === 'permission-denied') {
+      throw new Error("Access Denied: This feature is restricted.");
+    }
+    if (error.code === 'internal') {
+      throw new Error("Server Error: The AI service encountered an issue. Please try again.");
+    }
+    if (error.code === 'invalid-argument') {
+      throw new Error("Validation Error: " + (error.message || "Invalid image data."));
+    }
+    if (error.message && error.message.includes("quota")) {
+      throw new Error("Service Busy: High traffic volume. Please try again later.");
     }
 
-    const rawData = JSON.parse(text);
-
-    return rawData.map((r: any, idx: number) => ({
-      id: `w-${Date.now()}-${idx}`,
-      date: r.workoutDate || new Date().toISOString(),
-      exercises: r.exercises.map((ex: any, eIdx: number) => ({
-        id: `ex-${Date.now()}-${idx}-${eIdx}`,
-        name: ex.name,
-        muscleGroup: ex.muscleDistributions?.[0]?.group || 'Other', 
-        sets: ex.sets
-      })),
-      totalVolume: r.exercises.reduce((acc: number, ex: any) => 
-        acc + ex.sets.reduce((sAcc: number, s: any) => sAcc + (s.reps * (s.weight || 0)), 0), 0)
-    }));
-  } catch (error) {
-    console.error("Gemini Processing Error:", error);
-    throw error;
+    throw new Error("Failed to process images: " + (error.message || "Unknown error"));
   }
 };

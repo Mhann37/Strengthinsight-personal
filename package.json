@@ -14,7 +14,8 @@
     "recharts": "2.15.0",
     "@google/genai": "1.38.0",
     "@heroicons/react": "^2.2.0",
-    "firebase": "^12.8.0"
+    "firebase": "^12.8.0",
+    "firebase-functions": "^7.0.5"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

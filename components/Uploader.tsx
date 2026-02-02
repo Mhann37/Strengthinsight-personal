@@ -78,16 +78,19 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
     } catch (err: any) {
       console.error(err);
       let msg = "Failed to extract data. Please ensure the screenshots are clear.";
+      
+      // Handle known error messages from geminiService / Cloud Function
       if (err.message) {
-        if (err.message.includes("API Key")) {
-          msg = "API Key Error: Please check your environment configuration.";
-        } else if (err.message.includes("403")) {
-          msg = "API Access Denied. Please check your API Key restrictions.";
-        } else if (err.message.includes("400")) {
-          msg = "Bad Request. The images might be too large or the format unsupported.";
-        } else if (err.message.includes("fetch")) {
-          msg = "Network Error. Please check your internet connection.";
-        }
+         if (err.message.includes("Access Denied")) {
+           msg = "Access Denied. You may need to be added to the beta tester list.";
+         } else if (err.message.includes("Service Busy")) {
+           msg = "System is busy. Please wait a moment and try again.";
+         } else if (err.message.includes("Validation Error")) {
+           msg = err.message;
+         } else {
+           // Pass through generic errors
+           msg = err.message;
+         }
       }
       setError(msg);
     } finally {
@@ -353,7 +356,6 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
                  <p className="text-xs font-black uppercase tracking-tighter mb-0.5">Save Failed</p>
                  <p className="text-sm font-bold">{saveError}</p>
               </div>
-              {/* Fix: Added missing XMarkIcon import to handle the close button in the error message */}
               <button onClick={() => setSaveError(null)} className="p-1 hover:bg-white/10 rounded-lg transition-colors">
                 <XMarkIcon className="w-5 h-5" />
               </button>
