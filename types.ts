@@ -21,4 +21,4 @@ export interface Workout {
   exercises: Exercise[];
 }
 
-export type AppView = 'dashboard' | 'upload' | 'history' | 'analytics' | 'export' | 'muscleGroups' | 'settings';
+export type AppView = 'dashboard' | 'upload' | 'history' | 'analytics' | 'export' | 'muscleGroups';
