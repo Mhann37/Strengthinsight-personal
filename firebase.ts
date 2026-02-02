@@ -11,8 +11,11 @@ import {
   setPersistence
 } from "firebase/auth";
 import type { User } from "firebase/auth";
-// @ts-ignore
-import {
+import { getFunctions, httpsCallable } from "firebase/functions";
+import * as firestoreModule from "firebase/firestore";
+
+// Bypass missing type definitions in some environments
+const {
   getFirestore,
   collection,
   addDoc,
@@ -21,8 +24,7 @@ import {
   deleteDoc,
   doc,
   onSnapshot
-} from "firebase/firestore";
-import { getFunctions, httpsCallable } from "firebase/functions";
+} = firestoreModule as any;
 
 const getEnv = (key: string): string | undefined => {
   // @ts-ignore

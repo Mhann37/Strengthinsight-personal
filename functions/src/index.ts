@@ -1,4 +1,3 @@
-
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { defineSecret, defineString } from "firebase-functions/params";
 import { GoogleGenAI, Type } from "@google/genai";
@@ -94,8 +93,8 @@ export const processWorkoutScreenshots = onCall(
   { 
     secrets: [geminiApiKey],
     maxInstances: 10,
-    timeoutSeconds: 60,
-    memory: "1GiB", // Vision tasks require decent memory
+    timeoutSeconds: 120, // Increased timeout for vision tasks
+    memory: "1GiB", 
     region: "us-central1"
   },
   async (request) => {
@@ -123,7 +122,7 @@ export const processWorkoutScreenshots = onCall(
       throw new HttpsError("invalid-argument", "Max 5 images allowed per upload.");
     }
 
-    // Approx size check (15MB limit)
+    // Approx size check (20MB limit)
     const totalSize = images.reduce((acc: number, img: any) => acc + (img.base64?.length || 0), 0);
     if (totalSize > 20_000_000) { 
       throw new HttpsError("invalid-argument", "Payload too large. Please reduce image resolution.");
@@ -131,9 +130,11 @@ export const processWorkoutScreenshots = onCall(
 
     try {
       // D. Initialize Gemini
-      // Using gemini-3-pro-preview for superior multimodal (vision) reasoning
       const ai = new GoogleGenAI({ apiKey: geminiApiKey.value() });
-      const model = "gemini-3-pro-preview"; 
+      
+      // Use 'gemini-flash-latest' for production reliability and speed with vision tasks.
+      // 'gemini-3-pro-preview' can be slower or more restricted.
+      const model = "gemini-flash-latest"; 
 
       // E. Construct Prompt
       const promptText = `
@@ -164,19 +165,20 @@ export const processWorkoutScreenshots = onCall(
         config: {
           responseMimeType: "application/json",
           responseSchema: RESPONSE_SCHEMA as any,
-          temperature: 0.1 // Low temperature for high factual accuracy
+          temperature: 0 // Zero temperature for maximum determinism
         }
       });
 
       // H. Parse Response
       const text = response.text;
-      if (!text) throw new Error("Empty response from AI");
+      if (!text) {
+        console.error("Gemini returned empty text response", response);
+        throw new Error("AI returned empty response.");
+      }
 
       const rawData = JSON.parse(text) as WorkoutResponse;
 
       // I. Return structured data to client
-      // We perform final ID generation and volume calc on the client side or here. 
-      // Returning clean data here.
       return {
         workoutDate: rawData.workoutDate,
         exercises: rawData.exercises
@@ -189,7 +191,8 @@ export const processWorkoutScreenshots = onCall(
         throw new HttpsError("invalid-argument", "Image format not supported or corrupted.");
       }
       
-      throw new HttpsError("internal", "Failed to analyze workout data. Please try again.");
+      // Pass the actual error message back during development for easier debugging
+      throw new HttpsError("internal", `AI Error: ${error.message || "Unknown error occurred"}`);
     }
   }
 );

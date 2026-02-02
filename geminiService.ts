@@ -1,4 +1,3 @@
-
 import { functions, httpsCallable } from "./firebase";
 import { Workout, Exercise } from "./types";
 
@@ -28,10 +27,25 @@ export const processWorkoutScreenshots = async (images: { base64: string, timest
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
     // Prepare payload for Cloud Function
-    const payload = images.map((img) => ({
-      base64: img.base64.includes(',') ? img.base64.split(',')[1] : img.base64,
-      mimeType: "image/png" // Simplification for prototype
-    }));
+    const payload = images.map((img) => {
+      let mimeType = "image/png";
+      let base64 = img.base64;
+
+      // Extract real MIME type if present in Data URL
+      if (img.base64.includes(',')) {
+        const parts = img.base64.split(',');
+        base64 = parts[1];
+        const match = parts[0].match(/:(.*?);/);
+        if (match) {
+          mimeType = match[1];
+        }
+      }
+
+      return {
+        base64: base64,
+        mimeType: mimeType
+      };
+    });
 
     // Call the backend
     const result = await processFn({ 
@@ -76,7 +90,11 @@ export const processWorkoutScreenshots = async (images: { base64: string, timest
       throw new Error("Access Denied: This feature is restricted.");
     }
     if (error.code === 'internal') {
-      throw new Error("Server Error: The AI service encountered an issue. Please try again.");
+      // Return the message provided by the backend if available
+      if (error.message && !error.message.includes("internal")) {
+         throw new Error(error.message);
+      }
+      throw new Error("Server Error: The AI service failed to process the request. Try again.");
     }
     if (error.code === 'invalid-argument') {
       throw new Error("Validation Error: " + (error.message || "Invalid image data."));
