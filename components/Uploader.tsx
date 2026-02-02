@@ -1,12 +1,11 @@
-
 import React, { useState, useRef } from 'react';
 import { processWorkoutScreenshots } from '../geminiService';
 import { Workout, Exercise, SetRecord } from '../types';
-import { 
-  CloudArrowUpIcon, 
-  ExclamationCircleIcon, 
-  SparklesIcon, 
-  TrashIcon, 
+import {
+  CloudArrowUpIcon,
+  ExclamationCircleIcon,
+  SparklesIcon,
+  TrashIcon,
   XCircleIcon,
   CheckCircleIcon,
   PencilSquareIcon,
@@ -49,10 +48,13 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
       files.forEach(file => {
         const reader = new FileReader();
         reader.onloadend = () => {
-          setSelectedFiles(prev => [...prev, {
-            file,
-            preview: reader.result as string
-          }]);
+          setSelectedFiles(prev => [
+            ...prev,
+            {
+              file,
+              preview: reader.result as string
+            }
+          ]);
         };
         reader.readAsDataURL(file);
       });
@@ -68,104 +70,75 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
     setIsProcessing(true);
     setError(null);
     setSaveError(null);
+
     try {
       const imagesData = selectedFiles.map(f => ({
         base64: f.preview,
         timestamp: f.file.lastModified
       }));
+
       const raw = await processWorkoutScreenshots(imagesData);
 
-// 1) Normalize into an array (or null)
-let normalized: any[] | null =
-  Array.isArray(raw) ? raw :
-  Array.isArray((raw as any)?.workouts) ? (raw as any).workouts :
-  Array.isArray((raw as any)?.extractedWorkouts) ? (raw as any).extractedWorkouts :
-  Array.isArray((raw as any)?.pendingWorkouts) ? (raw as any).pendingWorkouts :
-  Array.isArray((raw as any)?.result) ? (raw as any).result :
-  Array.isArray((raw as any)?.data) ? (raw as any).data :
-  Array.isArray((raw as any)?.data?.workouts) ? (raw as any).data.workouts :
-  Array.isArray((raw as any)?.result?.workouts) ? (raw as any).result.workouts :
-  null;
+      // 1) Normalize into an array (or null)
+      let normalized: any[] | null =
+        Array.isArray(raw) ? raw :
+        Array.isArray((raw as any)?.workouts) ? (raw as any).workouts :
+        Array.isArray((raw as any)?.extractedWorkouts) ? (raw as any).extractedWorkouts :
+        Array.isArray((raw as any)?.pendingWorkouts) ? (raw as any).pendingWorkouts :
+        Array.isArray((raw as any)?.result) ? (raw as any).result :
+        Array.isArray((raw as any)?.data) ? (raw as any).data :
+        Array.isArray((raw as any)?.data?.workouts) ? (raw as any).data.workouts :
+        Array.isArray((raw as any)?.result?.workouts) ? (raw as any).result.workouts :
+        null;
 
-// 2) If it returned a single workout object, wrap it
-if (!normalized && raw && typeof raw === "object") {
-  const maybeWorkout = raw as any;
-  if ((maybeWorkout.workoutDate || maybeWorkout.date) && maybeWorkout.exercises) {
-    normalized = [maybeWorkout];
-  }
-}
+      // 2) If it returned a single workout object, wrap it
+      if (!normalized && raw && typeof raw === 'object') {
+        const maybeWorkout = raw as any;
+        if ((maybeWorkout.workoutDate || maybeWorkout.date) && maybeWorkout.exercises) {
+          normalized = [maybeWorkout];
+        }
+      }
 
-// 3) HARD GUARD: stop here if not an array
-if (!Array.isArray(normalized)) {
-  console.warn("Unexpected AI response shape:", raw);
-  throw new Error("We couldn't extract a workout from these screenshots. Try clearer screenshots or fewer images.");
-}
+      // 3) HARD GUARD: stop here if not an array
+      if (!Array.isArray(normalized)) {
+        console.warn('Unexpected AI response shape:', raw);
+        throw new Error(
+          "We couldn't extract a workout from these screenshots. Try clearer screenshots or fewer images."
+        );
+      }
 
-// 4) Only now is it safe to touch `w`
-const cleanedWorkouts = normalized
-  .filter(Boolean)
-  .map((w: any) => ({
-    ...w,
-    date: w.date ?? w.workoutDate,
-    exercises: Array.isArray(w.exercises) ? w.exercises : [],
-  }))
-  .filter((w: any) => typeof w.date === "string" && w.date.length > 0);
+      // 4) Only now is it safe to touch each workout item
+      const cleaned = normalized
+        .filter(Boolean)
+        .map((w: any) => ({
+          ...w,
+          // Accept either date or workoutDate keys
+          date: w.date ?? w.workoutDate,
+          exercises: Array.isArray(w.exercises) ? w.exercises : [],
+        }))
+        .filter((w: any) => typeof w.date === 'string' && w.date.length > 0);
 
-if (cleanedWorkouts.length === 0) {
-  console.warn("Normalized workouts empty:", normalized);
-  throw new Error("No workouts detected. Try clearer screenshots or fewer images.");
-}
+      if (cleaned.length === 0) {
+        console.warn('Normalized workouts empty:', normalized);
+        throw new Error('No workouts detected. Please try clearer screenshots.');
+      }
 
-setPendingWorkouts(cleanedWorkouts as any);
-
-const cleanedWorkouts = normalized
-  .filter(Boolean)
-  .map((w: any) => ({
-    ...w,
-    date: w.date ?? w.workoutDate,
-    exercises: Array.isArray(w.exercises) ? w.exercises : [],
-  }))
-  .filter((w: any) => typeof w.date === "string" && w.date.length > 0);
-
-if (cleanedWorkouts.length === 0) {
-  throw new Error("No workouts detected. Please try clearer screenshots.");
-}
-
-setPendingWorkouts(cleaned as any);
-
-// Light validation + cleanup to prevent render crashes
-const cleaned = normalized
-  .filter(Boolean)
-  .map((w: any) => ({
-    ...w,
-    // Accept either date or workoutDate keys
-    date: w.date ?? w.workoutDate,
-    exercises: Array.isArray(w.exercises) ? w.exercises : [],
-  }))
-  .filter((w: any) => typeof w.date === "string" && w.date.length > 0);
-
-if (cleaned.length === 0) {
-  throw new Error("No workouts detected. Please try clearer screenshots.");
-}
-
-setPendingWorkouts(cleaned as any);
-;
+      setPendingWorkouts(cleaned as any);
     } catch (err: any) {
       console.error(err);
-      let msg = "Failed to extract data. Please ensure the screenshots are clear.";
-      
+      let msg = 'Failed to extract data. Please ensure the screenshots are clear.';
+
       // Handle known error messages from geminiService / Cloud Function
-      if (err.message) {
-         if (err.message.includes("Access Denied")) {
-           msg = "Access Denied. You may need to be added to the beta tester list.";
-         } else if (err.message.includes("Service Busy")) {
-           msg = "System is busy. Please wait a moment and try again.";
-         } else if (err.message.includes("Validation Error")) {
-           msg = err.message;
-         } else {
-           // Pass through generic errors
-           msg = err.message;
-         }
+      if (err?.message) {
+        if (err.message.includes('Access Denied')) {
+          msg = 'Access Denied. You may need to be added to the beta tester list.';
+        } else if (err.message.includes('Service Busy')) {
+          msg = 'System is busy. Please wait a moment and try again.';
+        } else if (err.message.includes('Validation Error')) {
+          msg = err.message;
+        } else {
+          msg = err.message;
+        }
       }
       setError(msg);
     } finally {
@@ -231,21 +204,20 @@ setPendingWorkouts(cleaned as any);
     try {
       const finalized = pendingWorkouts.map(w => ({
         ...w,
-        totalVolume: w.exercises.reduce((acc, ex) => 
-          acc + ex.sets.reduce((sAcc, s) => sAcc + (s.reps * s.weight), 0)
-        , 0)
+        totalVolume: w.exercises.reduce(
+          (acc, ex) => acc + ex.sets.reduce((sAcc, s) => sAcc + (s.reps * s.weight), 0),
+          0
+        )
       }));
-      // Call parent to save. If it throws (e.g. duplicate), it's caught here.
+
       await onWorkoutsExtracted(finalized);
-      
-      // Clear states ONLY on success
+
       setPendingWorkouts(null);
       setSelectedFiles([]);
       setSelectedPlatform(null);
     } catch (err: any) {
-      console.error("Confirmation Error:", err);
-      // Display the error clearly without removing the Verify UI
-      setSaveError(err.message || "An unexpected error occurred while saving your data.");
+      console.error('Confirmation Error:', err);
+      setSaveError(err.message || 'An unexpected error occurred while saving your data.');
     } finally {
       setIsSaving(false);
     }
@@ -265,7 +237,7 @@ setPendingWorkouts(cleaned as any);
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <button 
+          <button
             onClick={() => setSelectedPlatform('whoop')}
             className="group relative bg-slate-900 border-2 border-slate-800 p-8 rounded-[2.5rem] text-left transition-all hover:border-blue-500/50 hover:bg-slate-800/50 hover:shadow-2xl hover:shadow-blue-500/10 active:scale-[0.98]"
           >
@@ -319,8 +291,8 @@ setPendingWorkouts(cleaned as any);
                   </div>
                   <div>
                     <label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest block mb-1">Session Date</label>
-                    <input 
-                      type="datetime-local" 
+                    <input
+                      type="datetime-local"
                       defaultValue={new Date(workout.date).toISOString().slice(0, 16)}
                       onChange={(e) => handleUpdateWorkoutDate(wIdx, e.target.value)}
                       className="bg-transparent border-b border-slate-700 font-bold text-white outline-none focus:border-blue-500 transition-colors"
@@ -341,7 +313,7 @@ setPendingWorkouts(cleaned as any);
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                       <div>
                         <label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest block mb-2">Exercise Name</label>
-                        <input 
+                        <input
                           className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 w-full font-bold text-white outline-none focus:border-blue-500 transition-all"
                           value={ex.name}
                           onChange={(e) => handleUpdateExerciseField(wIdx, eIdx, 'name', e.target.value)}
@@ -351,7 +323,7 @@ setPendingWorkouts(cleaned as any);
                         <label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest block mb-2">Muscle Group</label>
                         <div className="relative">
                           <TagIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
-                          <select 
+                          <select
                             className="bg-slate-900 border border-slate-800 rounded-xl pl-10 pr-4 py-2 w-full font-bold text-blue-400 outline-none focus:border-blue-500 transition-all appearance-none cursor-pointer"
                             value={ex.muscleGroup || ''}
                             onChange={(e) => handleUpdateExerciseField(wIdx, eIdx, 'muscleGroup', e.target.value)}
@@ -375,14 +347,14 @@ setPendingWorkouts(cleaned as any);
                       {ex.sets.map((set, sIdx) => (
                         <div key={sIdx} className="grid grid-cols-4 items-center bg-slate-900/50 rounded-xl px-2 py-2 border border-slate-800/30 group/set">
                           <span className="text-slate-400 font-mono text-sm ml-2">#{sIdx + 1}</span>
-                          <input 
+                          <input
                             type="number"
                             value={set.reps}
                             onChange={(e) => handleUpdateSet(wIdx, eIdx, sIdx, 'reps', e.target.value)}
                             className="bg-slate-800 rounded-lg px-2 py-1 text-sm font-mono w-16 outline-none focus:ring-1 focus:ring-blue-500 text-white"
                           />
                           <div className="flex items-center space-x-2">
-                            <input 
+                            <input
                               type="number"
                               value={set.weight}
                               onChange={(e) => handleUpdateSet(wIdx, eIdx, sIdx, 'weight', e.target.value)}
@@ -391,7 +363,7 @@ setPendingWorkouts(cleaned as any);
                             <span className="text-[10px] text-slate-500 uppercase font-bold">{set.unit}</span>
                           </div>
                           <div className="text-right">
-                            <button 
+                            <button
                               onClick={() => removeSet(wIdx, eIdx, sIdx)}
                               className="p-1.5 text-slate-700 hover:text-red-400 transition-colors"
                             >
@@ -401,14 +373,14 @@ setPendingWorkouts(cleaned as any);
                         </div>
                       ))}
                       <div className="flex gap-2">
-                        <button 
+                        <button
                           onClick={() => addSet(wIdx, eIdx)}
                           className="flex-1 py-3 border border-dashed border-slate-800 rounded-xl text-slate-500 hover:text-blue-400 hover:border-blue-900/50 transition-all flex items-center justify-center space-x-2 text-xs font-bold uppercase tracking-widest"
                         >
                           <PlusIcon className="w-4 h-4" />
                           <span>Add Set</span>
                         </button>
-                        <button 
+                        <button
                           onClick={() => removeExercise(wIdx, eIdx)}
                           className="px-4 py-3 border border-slate-800 rounded-xl text-slate-600 hover:text-red-500 transition-colors"
                         >
@@ -428,8 +400,8 @@ setPendingWorkouts(cleaned as any);
             <div className="p-4 bg-red-950/90 border border-red-500/50 rounded-2xl flex items-center space-x-3 text-red-400 shadow-[0_0_50px_rgba(239,68,68,0.3)] backdrop-blur-xl animate-[shake_0.5s_ease-in-out_infinite]">
               <ExclamationCircleIcon className="w-6 h-6 shrink-0" />
               <div className="flex-1">
-                 <p className="text-xs font-black uppercase tracking-tighter mb-0.5">Save Failed</p>
-                 <p className="text-sm font-bold">{saveError}</p>
+                <p className="text-xs font-black uppercase tracking-tighter mb-0.5">Save Failed</p>
+                <p className="text-sm font-bold">{saveError}</p>
               </div>
               <button onClick={() => setSaveError(null)} className="p-1 hover:bg-white/10 rounded-lg transition-colors">
                 <XMarkIcon className="w-5 h-5" />
@@ -439,14 +411,14 @@ setPendingWorkouts(cleaned as any);
         )}
 
         <div className="fixed bottom-8 left-1/2 -translate-x-1/2 w-full max-w-4xl px-4 flex space-x-4 z-30">
-          <button 
+          <button
             disabled={isSaving}
             onClick={() => setPendingWorkouts(null)}
             className="flex-1 bg-slate-800 text-white py-4 rounded-[1.5rem] font-bold hover:bg-slate-700 transition-all disabled:opacity-50 border border-slate-700"
           >
             Discard
           </button>
-          <button 
+          <button
             disabled={isSaving}
             onClick={confirmUpload}
             className="flex-[2] bg-blue-600 text-white py-4 rounded-[1.5rem] font-bold shadow-2xl shadow-blue-900/40 hover:bg-blue-500 transition-all flex items-center justify-center space-x-3 disabled:opacity-50"
@@ -467,7 +439,7 @@ setPendingWorkouts(cleaned as any);
     <div className="max-w-4xl mx-auto space-y-8 animate-fadeIn">
       <header className="flex items-center justify-between">
         <div>
-          <button 
+          <button
             onClick={() => setSelectedPlatform(null)}
             className="flex items-center space-x-1 text-slate-500 hover:text-blue-500 transition-colors mb-2 text-sm font-bold uppercase tracking-wider"
           >
@@ -479,7 +451,7 @@ setPendingWorkouts(cleaned as any);
         </div>
       </header>
 
-      <div 
+      <div
         onClick={() => !isProcessing && fileInputRef.current?.click()}
         className={`
           relative border-2 border-dashed rounded-[2.5rem] p-16 transition-all cursor-pointer group flex flex-col items-center justify-center text-center
@@ -487,22 +459,22 @@ setPendingWorkouts(cleaned as any);
           ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}
         `}
       >
-        <input 
-          type="file" 
-          className="hidden" 
-          ref={fileInputRef} 
-          accept="image/*" 
+        <input
+          type="file"
+          className="hidden"
+          ref={fileInputRef}
+          accept="image/*"
           multiple
           onChange={handleFileChange}
         />
-        
+
         {selectedFiles.length > 0 ? (
           <div className="w-full space-y-6">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {selectedFiles.map((f, i) => (
                 <div key={i} className="relative group/thumb aspect-[3/4] rounded-2xl overflow-hidden border border-slate-700 shadow-xl">
                   <img src={f.preview} alt={`Preview ${i}`} className="w-full h-full object-cover" />
-                  <button 
+                  <button
                     onClick={(e) => { e.stopPropagation(); removeFile(i); }}
                     className="absolute top-2 right-2 p-1.5 bg-red-600 rounded-full text-white opacity-0 group-hover/thumb:opacity-100 transition-opacity"
                   >
@@ -528,8 +500,8 @@ setPendingWorkouts(cleaned as any);
 
       {error && (
         <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center space-x-3 text-red-400 animate-pulse">
-           <ExclamationCircleIcon className="w-5 h-5 shrink-0" />
-           <span className="text-sm font-medium">{error}</span>
+          <ExclamationCircleIcon className="w-5 h-5 shrink-0" />
+          <span className="text-sm font-medium">{error}</span>
         </div>
       )}
 
@@ -538,8 +510,8 @@ setPendingWorkouts(cleaned as any);
         disabled={selectedFiles.length === 0 || isProcessing}
         className={`
           w-full py-5 rounded-[1.5rem] font-bold text-lg flex items-center justify-center space-x-3 transition-all
-          ${selectedFiles.length === 0 || isProcessing 
-            ? 'bg-slate-800 text-slate-500 cursor-not-allowed' 
+          ${selectedFiles.length === 0 || isProcessing
+            ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
             : 'bg-blue-600 text-white hover:bg-blue-500 shadow-2xl shadow-blue-900/30'}
         `}
       >
@@ -555,7 +527,7 @@ setPendingWorkouts(cleaned as any);
           </>
         )}
       </button>
-      
+
       <style>{`
         @keyframes shake {
           0%, 100% { transform: translateX(-50%) rotate(0deg); }
