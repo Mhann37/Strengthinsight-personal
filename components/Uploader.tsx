@@ -74,6 +74,7 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
         timestamp: f.file.lastModified
       }));
       const raw = await processWorkoutScreenshots(imagesData);
+      console.log("AI raw response:", raw);
 
 // Normalize possible response shapes (future-proof)
 const normalized =
