@@ -74,18 +74,45 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
         timestamp: f.file.lastModified
       }));
       const raw = await processWorkoutScreenshots(imagesData);
-      console.log("AI raw response:", raw);
 
-// Normalize possible response shapes (future-proof)
-const normalized =
+// Try common shapes first
+let normalized: any[] | null =
   Array.isArray(raw) ? raw :
   Array.isArray((raw as any)?.workouts) ? (raw as any).workouts :
+  Array.isArray((raw as any)?.extractedWorkouts) ? (raw as any).extractedWorkouts :
+  Array.isArray((raw as any)?.pendingWorkouts) ? (raw as any).pendingWorkouts :
+  Array.isArray((raw as any)?.result) ? (raw as any).result :
   Array.isArray((raw as any)?.data) ? (raw as any).data :
+  Array.isArray((raw as any)?.data?.workouts) ? (raw as any).data.workouts :
+  Array.isArray((raw as any)?.result?.workouts) ? (raw as any).result.workouts :
   null;
+
+// If it returned a single workout object, wrap it
+if (!normalized && raw && typeof raw === "object") {
+  const maybeWorkout = raw as any;
+  if ((maybeWorkout.workoutDate || maybeWorkout.date) && maybeWorkout.exercises) {
+    normalized = [maybeWorkout];
+  }
+}
 
 if (!Array.isArray(normalized)) {
   throw new Error("Invalid analysis response (expected a workout list). Please try again.");
 }
+
+const cleaned = normalized
+  .filter(Boolean)
+  .map((w: any) => ({
+    ...w,
+    date: w.date ?? w.workoutDate,
+    exercises: Array.isArray(w.exercises) ? w.exercises : [],
+  }))
+  .filter((w: any) => typeof w.date === "string" && w.date.length > 0);
+
+if (cleaned.length === 0) {
+  throw new Error("No workouts detected. Please try clearer screenshots.");
+}
+
+setPendingWorkouts(cleaned as any);
 
 // Light validation + cleanup to prevent render crashes
 const cleaned = normalized
