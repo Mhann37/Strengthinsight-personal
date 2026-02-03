@@ -55,9 +55,14 @@ function classifyError(err: any): { reasonCode: ReasonCode; httpish?: number } {
   const msg = String(err?.message ?? "").toLowerCase();
 
   // Common overload signals
-  if (status === 429 || msg.includes("resource exhausted") || msg.includes("overloaded")) {
-    return { reasonCode: "AI_OVERLOADED", httpish: 429 };
-  }
+ if (
+  status === 429 ||
+  msg.includes("resource exhausted") ||
+  msg.includes("overloaded") ||
+  msg.includes("too many requests")
+) {
+  return { reasonCode: "AI_OVERLOADED", httpish: 429 };
+}
 
   // Bad request / rejected payload
   if (status === 400 || msg.includes("invalid argument") || msg.includes("image") || msg.includes("mime")) {
@@ -220,47 +225,68 @@ const RESPONSE_SCHEMA = {
 
 // 4. The Cloud Function
 export const processWorkoutScreenshots = onCall(
-  { 
+  {
     secrets: [geminiApiKey],
     maxInstances: 10,
-    timeoutSeconds: 120, 
-    memory: "1GiB", 
-    region: "us-central1"
+    timeoutSeconds: 120,
+    memory: "1GiB",
+    region: "us-central1",
   },
   async (request) => {
     const requestId = makeRequestId();
+
     // A. Authentication Check
     if (!request.auth) {
-      throw new HttpsError("unauthenticated", JSON.stringify(toPublicError("UNAUTHENTICATED", requestId)));
+      throw new HttpsError(
+        "unauthenticated",
+        JSON.stringify(toPublicError("UNAUTHENTICATED", requestId))
+      );
     }
 
     // C. Input Validation
     const { images, timezone } = request.data;
-    
+
     if (!Array.isArray(images) || images.length === 0) {
-      throw new HttpsError("invalid-argument", JSON.stringify(toPublicError("BAD_INPUT", requestId)));
+      throw new HttpsError(
+        "invalid-argument",
+        JSON.stringify(toPublicError("BAD_INPUT", requestId))
+      );
     }
     if (images.length > 5) {
-      throw new HttpsError("invalid-argument", JSON.stringify(toPublicError("BAD_INPUT", requestId)));
+      throw new HttpsError(
+        "invalid-argument",
+        JSON.stringify(toPublicError("BAD_INPUT", requestId))
+      );
     }
 
     // Approx size check (20MB limit)
-    const totalSize = images.reduce((acc: number, img: any) => acc + (img.base64?.length || 0), 0);
-    if (totalSize > 20_000_000) { 
-      throw new HttpsError("invalid-argument", JSON.stringify(toPublicError("PAYLOAD_TOO_LARGE", requestId)));
+    const totalSize = images.reduce(
+      (acc: number, img: any) => acc + (img.base64?.length || 0),
+      0
+    );
+    if (totalSize > 20_000_000) {
+      throw new HttpsError(
+        "invalid-argument",
+        JSON.stringify(toPublicError("PAYLOAD_TOO_LARGE", requestId))
+      );
     }
-await enforceRateLimits(request.auth.uid);
-    
+
+    // ✅ Rate limit (auth-only)
+    await enforceRateLimits(request.auth.uid);
+
     try {
       // D. Initialize Gemini
       const apiKey = geminiApiKey.value();
       if (!apiKey) {
-         console.error("Gemini API Key is missing from secrets configuration.");
-         throw new HttpsError("internal", JSON.stringify(toPublicError("SERVER_CONFIG", requestId)));
+        console.error("Gemini API Key is missing from secrets configuration.");
+        throw new HttpsError(
+          "internal",
+          JSON.stringify(toPublicError("SERVER_CONFIG", requestId))
+        );
       }
 
-      const ai = new GoogleGenAI({ apiKey: apiKey });
-      const model = "gemini-3-flash-preview"; 
+      const ai = new GoogleGenAI({ apiKey });
+      const model = "gemini-3-flash-preview";
 
       // E. Construct Prompt
       const promptText = `
@@ -276,95 +302,92 @@ await enforceRateLimits(request.auth.uid);
       const parts = [
         { text: promptText },
         ...images.map((img: any) => {
-          // Fallback to jpeg if mimeType is missing or generic
           let mimeType = img.mimeType;
           if (!mimeType || !mimeType.startsWith("image/")) {
             mimeType = "image/jpeg";
           }
-          
           return {
             inlineData: {
-              mimeType: mimeType,
-              data: img.base64
-            }
+              mimeType,
+              data: img.base64,
+            },
           };
-        })
+        }),
       ];
 
-// G. Call AI (retry once on overload)
-const generate = async () =>
-  ai.models.generateContent({
-    model,
-    contents: { parts },
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: RESPONSE_SCHEMA as any,
-      temperature: 0,
-    },
-  });
+      // G. Call AI (retry once on overload)
+      const generate = async () =>
+        ai.models.generateContent({
+          model,
+          contents: { parts },
+          config: {
+            responseMimeType: "application/json",
+            responseSchema: RESPONSE_SCHEMA as any,
+            temperature: 0,
+          },
+        });
 
-const callWithRetry = async () => {
-  try {
-    return await generate();
-  } catch (err: any) {
-    const { reasonCode } = classifyError(err);
+      const callWithRetry = async () => {
+        try {
+          return await generate();
+        } catch (err: any) {
+          const { reasonCode } = classifyError(err);
+          if (reasonCode !== "AI_OVERLOADED") throw err;
 
-    if (reasonCode !== "AI_OVERLOADED") throw err;
+          const delay = 800 + Math.floor(Math.random() * 400); // 800–1200ms
+          console.warn("[processWorkoutScreenshots] overload, retrying once", {
+            requestId,
+            delay,
+          });
+          await sleep(delay);
 
-    const delay = 800 + Math.floor(Math.random() * 400); // 800–1200ms
-    console.warn("[processWorkoutScreenshots] overload, retrying once", { requestId, delay });
-    await sleep(delay);
+          return await generate(); // second (final) attempt
+        }
+      };
 
-    return await generate(); // second (final) attempt
-  }
-};
-
-const response = await callWithRetry();
+      const response: any = await callWithRetry();
 
       // H. Parse Response
       const text = response.text;
       if (!text) {
-        throw Object.assign(new Error("AI returned empty response."), { status: 520, _reasonCode: "AI_EMPTY_RESPONSE" });
+        throw Object.assign(new Error("AI returned empty response."), {
+          status: 520,
+          _reasonCode: "AI_EMPTY_RESPONSE",
+        });
       }
 
       const rawData = JSON.parse(text) as WorkoutResponse;
 
       return {
         workoutDate: rawData.workoutDate,
-        exercises: rawData.exercises
+        exercises: rawData.exercises,
       };
+    } catch (error: any) {
+      console.error("[processWorkoutScreenshots] error", {
+        requestId,
+        uid: request.auth?.uid,
+        status: error?.status ?? error?.code,
+        message: error?.message,
+        raw: error,
+      });
 
-} catch (error: any) {
-  // Always log full details server-side with requestId
-  console.error("[processWorkoutScreenshots] error", {
-    requestId,
-    uid: request.auth?.uid,
-    status: error?.status ?? error?.code,
-    message: error?.message,
-    raw: error,
-  });
+      const forced = error?._reasonCode as ReasonCode | undefined;
+      const { reasonCode } = forced ? { reasonCode: forced } : classifyError(error);
 
-  // Respect explicit reason code if we set one
-  const forced = error?._reasonCode as ReasonCode | undefined;
-  const { reasonCode } = forced ? { reasonCode: forced } : classifyError(error);
+      const publicPayload = toPublicError(reasonCode, requestId);
 
-  // Return stable error payload to client (no provider internals)
-  const publicPayload = toPublicError(reasonCode, requestId);
+      const callableCode =
+        reasonCode === "UNAUTHENTICATED"
+          ? "unauthenticated"
+          : reasonCode === "BAD_INPUT" ||
+            reasonCode === "PAYLOAD_TOO_LARGE" ||
+            reasonCode === "AI_REJECTED"
+          ? "invalid-argument"
+          : reasonCode === "AI_OVERLOADED" || reasonCode === "RATE_LIMITED"
+          ? "resource-exhausted"
+          : "internal";
 
-  // Map to firebase callable codes
-const callableCode =
-  reasonCode === "UNAUTHENTICATED" ? "unauthenticated"
-  : reasonCode === "BAD_INPUT" ||
-    reasonCode === "PAYLOAD_TOO_LARGE" ||
-    reasonCode === "AI_REJECTED"
-    ? "invalid-argument"
-    : reasonCode === "AI_OVERLOADED" ||
-      reasonCode === "RATE_LIMITED"
-      ? "resource-exhausted"
-      : "internal";
-
-  throw new HttpsError(callableCode as any, JSON.stringify(publicPayload));
-}
+      throw new HttpsError(callableCode as any, JSON.stringify(publicPayload));
     }
   }
 );
