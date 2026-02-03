@@ -67,7 +67,3 @@ export async function processWorkoutScreenshots(images: ImagePayload[]) {
     };
   }
 }
-
-  const res = await processWorkoutScreenshotsFn({ images: payload, timezone });
-  return (res as any).data;
-}
