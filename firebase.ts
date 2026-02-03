@@ -33,7 +33,14 @@ const getEnv = (key: string): string | undefined => {
 };
 
 // Fallback to API_KEY if FIREBASE_API_KEY is missing. 
-const apiKey = getEnv('FIREBASE_API_KEY') || getEnv('API_KEY');
+const apiKey = getEnv('FIREBASE_API_KEY');
+if (!apiKey) {
+  throw new Error("Missing FIREBASE_API_KEY (or VITE_FIREBASE_API_KEY)");
+}
+
+
+
+
 
 const config = {
   apiKey: apiKey,
@@ -47,7 +54,7 @@ const config = {
 export const app = initializeApp(config);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const functions = getFunctions(app);
+const functions = getFunctions(app, "us-central1");
 const googleProvider = new GoogleAuthProvider();
 
 // Ensure local persistence is set (helps with iOS Safari intermittent state loss)
