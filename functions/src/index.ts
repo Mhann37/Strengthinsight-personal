@@ -216,16 +216,35 @@ export const processWorkoutScreenshots = onCall(
         })
       ];
 
-      // G. Call AI
-      const response = await ai.models.generateContent({
-        model,
-        contents: { parts },
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: RESPONSE_SCHEMA as any,
-          temperature: 0
-        }
-      });
+// G. Call AI (retry once on overload)
+const generate = async () =>
+  ai.models.generateContent({
+    model,
+    contents: { parts },
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: RESPONSE_SCHEMA as any,
+      temperature: 0,
+    },
+  });
+
+const callWithRetry = async () => {
+  try {
+    return await generate();
+  } catch (err: any) {
+    const { reasonCode } = classifyError(err);
+
+    if (reasonCode !== "AI_OVERLOADED") throw err;
+
+    const delay = 800 + Math.floor(Math.random() * 400); // 800–1200ms
+    console.warn("[processWorkoutScreenshots] overload, retrying once", { requestId, delay });
+    await sleep(delay);
+
+    return await generate(); // second (final) attempt
+  }
+};
+
+const response = await callWithRetry();
 
       // H. Parse Response
       const text = response.text;
@@ -268,8 +287,6 @@ export const processWorkoutScreenshots = onCall(
 
   throw new HttpsError(callableCode as any, JSON.stringify(publicPayload));
 }
-      
-      throw new HttpsError("internal", `AI Error: ${error.message || "Unknown error occurred"}`);
     }
   }
 );
