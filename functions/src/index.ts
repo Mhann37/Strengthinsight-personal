@@ -101,9 +101,9 @@ async function enforceRateLimits(uid: string) {
   const minBucket = minuteBucketUTC(now);
   const dayBucket = dayBucketUTC(now);
 
-  const userMinuteRef = adminDb.doc(`rateLimits/users/${uid}/minutes/${minBucket}`);
-  const userDayRef = adminDb.doc(`rateLimits/users/${uid}/days/${dayBucket}`);
-  const globalMinuteRef = adminDb.doc(`rateLimits/global/minutes/${minBucket}`);
+const userMinuteRef = adminDb.doc(`rateLimitsUsers/${uid}/minutes/${minBucket}`);
+const userDayRef = adminDb.doc(`rateLimitsUsers/${uid}/days/${dayBucket}`);
+const globalMinuteRef = adminDb.doc(`rateLimitsGlobalMinutes/${minBucket}`);
 
   await adminDb.runTransaction(async (tx) => {
     const [umSnap, udSnap, gmSnap] = await Promise.all([
