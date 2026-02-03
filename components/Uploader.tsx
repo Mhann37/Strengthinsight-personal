@@ -110,13 +110,15 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
       // 4) Only now is it safe to touch each workout item
       const cleaned = normalized
         .filter(Boolean)
-        .map((w: any) => ({
-          ...w,
-          // Accept either date or workoutDate keys
-          date: w.date ?? w.workoutDate,
-          exercises: Array.isArray(w.exercises) ? w.exercises : [],
-        }))
-        .filter((w: any) => typeof w.date === 'string' && w.date.length > 0);
+       .map((w: any) => ({
+  ...w,
+  // keep AI-provided date if you want it later, but do NOT prefill UI
+  aiDate: w.date ?? w.workoutDate,
+  date: "", // <-- blank, user must select
+  exercises: Array.isArray(w.exercises) ? w.exercises : [],
+}))
+// no date filter anymore
+;
 
       if (cleaned.length === 0) {
         console.warn('Normalized workouts empty:', normalized);
@@ -150,7 +152,7 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
     if (!pendingWorkouts) return;
     setSaveError(null);
     const updated = [...pendingWorkouts];
-    updated[wIdx].date = new Date(newDate).toISOString();
+    updated[wIdx].date = newDate; // "YYYY-MM-DD"
     setPendingWorkouts(updated);
   };
 
@@ -197,31 +199,41 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
     setPendingWorkouts(updated);
   };
 
-  const confirmUpload = async () => {
-    if (!pendingWorkouts || isSaving) return;
-    setIsSaving(true);
-    setSaveError(null);
-    try {
-      const finalized = pendingWorkouts.map(w => ({
-        ...w,
-        totalVolume: w.exercises.reduce(
-          (acc, ex) => acc + ex.sets.reduce((sAcc, s) => sAcc + (s.reps * s.weight), 0),
-          0
-        )
-      }));
+const confirmUpload = async () => {
+  if (!pendingWorkouts || isSaving) return;
 
-      await onWorkoutsExtracted(finalized);
+  const missingDate = pendingWorkouts.some((w) => !w.date);
+  if (missingDate) {
+    setSaveError("Please select a session date before logging.");
+    return;
+  }
 
-      setPendingWorkouts(null);
-      setSelectedFiles([]);
-      setSelectedPlatform(null);
-    } catch (err: any) {
-      console.error('Confirmation Error:', err);
-      setSaveError(err.message || 'An unexpected error occurred while saving your data.');
-    } finally {
-      setIsSaving(false);
-    }
-  };
+  setIsSaving(true);
+  setSaveError(null);
+
+  try {
+    const finalized = pendingWorkouts.map((w) => ({
+      ...w,
+      totalVolume: w.exercises.reduce(
+        (acc, ex) =>
+          acc +
+          ex.sets.reduce((sAcc, s) => sAcc + s.reps * s.weight, 0),
+        0
+      ),
+    }));
+
+    await onWorkoutsExtracted(finalized);
+
+    setPendingWorkouts(null);
+    setSelectedFiles([]);
+    setSelectedPlatform(null);
+  } catch (err: any) {
+    console.error("Confirmation Error:", err);
+    setSaveError(err.message || "An unexpected error occurred while saving your data.");
+  } finally {
+    setIsSaving(false);
+  }
+};
 
   if (!selectedPlatform) {
     return (
@@ -283,7 +295,7 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
 
         <div className="space-y-12">
           {pendingWorkouts.map((workout, wIdx) => (
-            <div key={workout.id} className="bg-slate-900 border border-slate-800 rounded-[2rem] overflow-hidden shadow-2xl">
+            <div key={workout.id ?? `${wIdx}`} className="bg-slate-900 border border-slate-800 rounded-[2rem] overflow-hidden shadow-2xl">
               <div className="bg-slate-800/50 p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-center space-x-4">
                   <div className="bg-blue-600/20 p-3 rounded-2xl">
@@ -291,12 +303,14 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
                   </div>
                   <div>
                     <label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest block mb-1">Session Date</label>
-                    <input
-                      type="datetime-local"
-                      defaultValue={new Date(workout.date).toISOString().slice(0, 16)}
-                      onChange={(e) => handleUpdateWorkoutDate(wIdx, e.target.value)}
-                      className="bg-transparent border-b border-slate-700 font-bold text-white outline-none focus:border-blue-500 transition-colors"
-                    />
+              <input
+                type="date"
+              value={(workout.date ?? "")}
+              onChange={(e) => handleUpdateWorkoutDate(wIdx, e.target.value)}
+              className="bg-transparent border-b border-slate-700 font-bold text-white outline-none focus:border-blue-500 transition-colors"
+            required
+            />
+
                   </div>
                 </div>
                 <div className="text-right">
@@ -419,7 +433,7 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
             Discard
           </button>
           <button
-            disabled={isSaving}
+            disabled={isSaving || pendingWorkouts.some(w => !w.date)}
             onClick={confirmUpload}
             className="flex-[2] bg-blue-600 text-white py-4 rounded-[1.5rem] font-bold shadow-2xl shadow-blue-900/40 hover:bg-blue-500 transition-all flex items-center justify-center space-x-3 disabled:opacity-50"
           >
@@ -439,13 +453,15 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
     <div className="max-w-4xl mx-auto space-y-8 animate-fadeIn">
       <header className="flex items-center justify-between">
         <div>
-          <button
-            onClick={() => setSelectedPlatform(null)}
-            className="flex items-center space-x-1 text-slate-500 hover:text-blue-500 transition-colors mb-2 text-sm font-bold uppercase tracking-wider"
-          >
-            <ChevronLeftIcon className="w-4 h-4" />
-            <span>Change Platform</span>
-          </button>
+        <button
+          disabled={isProcessing || isSaving}
+          onClick={() => setSelectedPlatform(null)}
+          className="flex items-center space-x-1 text-slate-500 hover:text-blue-500 transition-colors mb-2 text-sm font-bold uppercase tracking-wider"
+      >
+  <ChevronLeftIcon className="w-4 h-4" />
+  <span>Change Platform</span>
+</button>
+
           <h1 className="text-3xl font-bold mb-2">Analysis Hub</h1>
           <p className="text-slate-400">Upload your Strength Trainer summaries to begin.</p>
         </div>
