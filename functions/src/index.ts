@@ -1,6 +1,12 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import { GoogleGenAI, Type } from "@google/genai";
+import { initializeApp } from "firebase-admin/app";
+import { getFirestore, FieldValue } from "firebase-admin/firestore";
+
+initializeApp();
+const adminDb = getFirestore();
+
 
 // 1. Configuration
 const geminiApiKey = defineSecret("GEMINI_API_KEY");
@@ -8,6 +14,7 @@ type ReasonCode =
   | "UNAUTHENTICATED"
   | "BAD_INPUT"
   | "PAYLOAD_TOO_LARGE"
+  | "RATE_LIMITED"
   | "AI_OVERLOADED"
   | "AI_REJECTED"
   | "AI_AUTH"
@@ -26,6 +33,7 @@ function toPublicError(reasonCode: ReasonCode, requestId: string) {
     UNAUTHENTICATED: "Please sign in to process workouts.",
     BAD_INPUT: "Please upload valid screenshots and try again.",
     PAYLOAD_TOO_LARGE: "Those images are too large. Please reduce resolution and try again.",
+    RATE_LIMITED: "You’ve hit the usage limit. Please wait a minute and try again.",
     AI_OVERLOADED: "The AI service is busy right now. Please try again in 30 seconds.",
     AI_REJECTED: "Those screenshots couldn’t be processed. Try clearer screenshots and try again.",
     AI_AUTH: "AI access is temporarily unavailable. Please try again later.",
@@ -62,6 +70,72 @@ function classifyError(err: any): { reasonCode: ReasonCode; httpish?: number } {
   }
 
   return { reasonCode: "UNKNOWN" };
+}
+
+const LIMITS = {
+  userPerMinute: 5,
+  userPerDay: 30,
+  globalPerMinute: 200,
+};
+
+function pad2(n: number) {
+  return String(n).padStart(2, "0");
+}
+
+// Use UTC buckets to keep it simple and consistent
+function minuteBucketUTC(d = new Date()) {
+  return `${d.getUTCFullYear()}${pad2(d.getUTCMonth() + 1)}${pad2(d.getUTCDate())}_${pad2(d.getUTCHours())}${pad2(d.getUTCMinutes())}`;
+}
+
+function dayBucketUTC(d = new Date()) {
+  return `${d.getUTCFullYear()}${pad2(d.getUTCMonth() + 1)}${pad2(d.getUTCDate())}`;
+}
+
+async function enforceRateLimits(uid: string) {
+  const now = new Date();
+  const minBucket = minuteBucketUTC(now);
+  const dayBucket = dayBucketUTC(now);
+
+  const userMinuteRef = adminDb.doc(`rateLimits/users/${uid}/minutes/${minBucket}`);
+  const userDayRef = adminDb.doc(`rateLimits/users/${uid}/days/${dayBucket}`);
+  const globalMinuteRef = adminDb.doc(`rateLimits/global/minutes/${minBucket}`);
+
+  await adminDb.runTransaction(async (tx) => {
+    const [umSnap, udSnap, gmSnap] = await Promise.all([
+      tx.get(userMinuteRef),
+      tx.get(userDayRef),
+      tx.get(globalMinuteRef),
+    ]);
+
+    const umCount = (umSnap.exists ? (umSnap.data()?.count ?? 0) : 0) as number;
+    const udCount = (udSnap.exists ? (udSnap.data()?.count ?? 0) : 0) as number;
+    const gmCount = (gmSnap.exists ? (gmSnap.data()?.count ?? 0) : 0) as number;
+
+    // Would this request exceed limits?
+    if (umCount + 1 > LIMITS.userPerMinute) {
+      throw Object.assign(new Error("rate_limited_user_minute"), { _reasonCode: "RATE_LIMITED" });
+    }
+    if (udCount + 1 > LIMITS.userPerDay) {
+      throw Object.assign(new Error("rate_limited_user_day"), { _reasonCode: "RATE_LIMITED" });
+    }
+    if (gmCount + 1 > LIMITS.globalPerMinute) {
+      throw Object.assign(new Error("rate_limited_global_minute"), { _reasonCode: "RATE_LIMITED" });
+    }
+
+    // Write/increment counts (atomic in transaction)
+    const base = {
+      updatedAt: FieldValue.serverTimestamp(),
+    };
+
+    if (!umSnap.exists) tx.set(userMinuteRef, { count: 1, ...base }, { merge: true });
+    else tx.update(userMinuteRef, { count: FieldValue.increment(1), ...base });
+
+    if (!udSnap.exists) tx.set(userDayRef, { count: 1, ...base }, { merge: true });
+    else tx.update(userDayRef, { count: FieldValue.increment(1), ...base });
+
+    if (!gmSnap.exists) tx.set(globalMinuteRef, { count: 1, ...base }, { merge: true });
+    else tx.update(globalMinuteRef, { count: FieldValue.increment(1), ...base });
+  });
 }
 
 // 2. Interfaces matches Client Logic
@@ -175,7 +249,8 @@ export const processWorkoutScreenshots = onCall(
     if (totalSize > 20_000_000) { 
       throw new HttpsError("invalid-argument", JSON.stringify(toPublicError("PAYLOAD_TOO_LARGE", requestId)));
     }
-
+await enforceRateLimits(request.auth.uid);
+    
     try {
       // D. Initialize Gemini
       const apiKey = geminiApiKey.value();
@@ -277,13 +352,16 @@ const response = await callWithRetry();
   const publicPayload = toPublicError(reasonCode, requestId);
 
   // Map to firebase callable codes
-  const callableCode =
-    reasonCode === "UNAUTHENTICATED" ? "unauthenticated"
-    : reasonCode === "BAD_INPUT" || reasonCode === "PAYLOAD_TOO_LARGE" || reasonCode === "AI_REJECTED"
-      ? "invalid-argument"
-      : reasonCode === "AI_OVERLOADED"
-        ? "resource-exhausted"
-        : "internal";
+const callableCode =
+  reasonCode === "UNAUTHENTICATED" ? "unauthenticated"
+  : reasonCode === "BAD_INPUT" ||
+    reasonCode === "PAYLOAD_TOO_LARGE" ||
+    reasonCode === "AI_REJECTED"
+    ? "invalid-argument"
+    : reasonCode === "AI_OVERLOADED" ||
+      reasonCode === "RATE_LIMITED"
+      ? "resource-exhausted"
+      : "internal";
 
   throw new HttpsError(callableCode as any, JSON.stringify(publicPayload));
 }
