@@ -85,18 +85,26 @@ const Login: React.FC = () => {
               {error}
             </div>
           )}
-          <div className="pt-4 text-center text-xs text-slate-500">
-  <p>
-    By continuing, you agree to our{" "}
-    <a
-      href="/privacy.html"
-      target="_blank"
-      rel="noopener noreferrer"
-      className="underline hover:text-blue-400 transition-colors"
-    >
-      Privacy Policy
-    </a>
-  </p>
+         <div className="pt-6 text-center text-xs text-slate-500">
+  By continuing, you agree to StrengthInsight’s{" "}
+  <a
+    href="/terms.html"
+    target="_blank"
+    rel="noopener noreferrer"
+    className="text-blue-400 hover:underline"
+  >
+    Terms of Service
+  </a>{" "}
+  and{" "}
+  <a
+    href="/privacy.html"
+    target="_blank"
+    rel="noopener noreferrer"
+    className="text-blue-400 hover:underline"
+  >
+    Privacy Policy
+  </a>
+  .
 </div>
         </div>
       </div>
