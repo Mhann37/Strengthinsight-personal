@@ -14,10 +14,70 @@ import {
   ChevronLeftIcon,
   LockClosedIcon,
   TagIcon,
-  XMarkIcon
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 
 const MUSCLE_GROUPS = ['Chest', 'Back', 'Shoulders', 'Arms', 'Legs', 'Core', 'Other'];
+
+const normalizeGroup = (g: any): string | null => {
+  if (!g) return null;
+  const s = String(g).trim();
+  const match = MUSCLE_GROUPS.find((x) => x.toLowerCase() === s.toLowerCase());
+  return match ?? null;
+};
+
+// Smart fallback categorizer (same idea as MuscleGroups.tsx)
+const inferMuscleGroupFromName = (name: string): string | null => {
+  const n = (name || '').toLowerCase();
+
+  // Chest
+  if (
+    n.includes('bench') ||
+    n.includes('chest') ||
+    n.includes('fly') ||
+    n.includes('pushup') ||
+    n.includes('push-up')
+  )
+    return 'Chest';
+
+  // Back
+  if (n.includes('row') || n.includes('pull') || n.includes('lat') || n.includes('chin')) return 'Back';
+
+  // Shoulders
+  if (
+    n.includes('shoulder') ||
+    n.includes('lateral') ||
+    n.includes('deltoid') ||
+    n.includes('ohp') ||
+    (n.includes('press') && (n.includes('shoulder') || n.includes('overhead')))
+  )
+    return 'Shoulders';
+
+  // Arms
+  if (
+    n.includes('curl') ||
+    n.includes('tricep') ||
+    n.includes('bicep') ||
+    n.includes('extension') ||
+    n.includes('dip')
+  )
+    return 'Arms';
+
+  // Legs
+  if (
+    n.includes('squat') ||
+    n.includes('leg') ||
+    n.includes('lung') ||
+    n.includes('calf') ||
+    n.includes('deadlift')
+  )
+    return 'Legs';
+
+  // Core
+  if (n.includes('plank') || n.includes('crunch') || n.includes('abs') || n.includes('core')) return 'Core';
+
+  return null;
+};
 
 interface UploaderProps {
   onWorkoutsExtracted: (workouts: Workout[]) => Promise<void>;
@@ -29,22 +89,6 @@ interface FileWithPreview {
 }
 
 type Platform = 'whoop' | 'garmin' | null;
-
-const pickPrimaryMuscleGroup = (ex: any): string => {
-  // If AI provided a distribution array like [{ group: "Chest", factor: 0.7 }, ...]
-  const dists = Array.isArray(ex?.muscleDistributions) ? ex.muscleDistributions : [];
-
-  if (dists.length > 0) {
-    const top = [...dists].sort((a, b) => (b?.factor ?? 0) - (a?.factor ?? 0))[0];
-    if (top?.group) return top.group;
-  }
-
-  // Fall back to any muscleGroup already present
-  if (typeof ex?.muscleGroup === 'string' && ex.muscleGroup.trim()) return ex.muscleGroup;
-
-  return 'Other';
-};
-
 
 const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
   const [selectedPlatform, setSelectedPlatform] = useState<Platform>(null);
@@ -61,15 +105,15 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
     if (files.length > 0) {
       setError(null);
       setSaveError(null);
-      files.forEach(file => {
+      files.forEach((file) => {
         const reader = new FileReader();
         reader.onloadend = () => {
-          setSelectedFiles(prev => [
+          setSelectedFiles((prev) => [
             ...prev,
             {
               file,
-              preview: reader.result as string
-            }
+              preview: reader.result as string,
+            },
           ]);
         };
         reader.readAsDataURL(file);
@@ -78,7 +122,7 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
   };
 
   const removeFile = (index: number) => {
-    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleProcess = async () => {
@@ -88,24 +132,32 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
     setSaveError(null);
 
     try {
-      const imagesData = selectedFiles.map(f => ({
+      const imagesData = selectedFiles.map((f) => ({
         base64: f.preview,
-        timestamp: f.file.lastModified
+        timestamp: f.file.lastModified,
       }));
 
       const raw = await processWorkoutScreenshots(imagesData);
 
       // 1) Normalize into an array (or null)
       let normalized: any[] | null =
-        Array.isArray(raw) ? raw :
-        Array.isArray((raw as any)?.workouts) ? (raw as any).workouts :
-        Array.isArray((raw as any)?.extractedWorkouts) ? (raw as any).extractedWorkouts :
-        Array.isArray((raw as any)?.pendingWorkouts) ? (raw as any).pendingWorkouts :
-        Array.isArray((raw as any)?.result) ? (raw as any).result :
-        Array.isArray((raw as any)?.data) ? (raw as any).data :
-        Array.isArray((raw as any)?.data?.workouts) ? (raw as any).data.workouts :
-        Array.isArray((raw as any)?.result?.workouts) ? (raw as any).result.workouts :
-        null;
+        Array.isArray(raw)
+          ? raw
+          : Array.isArray((raw as any)?.workouts)
+            ? (raw as any).workouts
+            : Array.isArray((raw as any)?.extractedWorkouts)
+              ? (raw as any).extractedWorkouts
+              : Array.isArray((raw as any)?.pendingWorkouts)
+                ? (raw as any).pendingWorkouts
+                : Array.isArray((raw as any)?.result)
+                  ? (raw as any).result
+                  : Array.isArray((raw as any)?.data)
+                    ? (raw as any).data
+                    : Array.isArray((raw as any)?.data?.workouts)
+                      ? (raw as any).data.workouts
+                      : Array.isArray((raw as any)?.result?.workouts)
+                        ? (raw as any).result.workouts
+                        : null;
 
       // 2) If it returned a single workout object, wrap it
       if (!normalized && raw && typeof raw === 'object') {
@@ -118,28 +170,47 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
       // 3) HARD GUARD: stop here if not an array
       if (!Array.isArray(normalized)) {
         console.warn('Unexpected AI response shape:', raw);
-        throw new Error(
-          "We couldn't extract a workout from these screenshots. Try clearer screenshots or fewer images."
-        );
+        throw new Error("We couldn't extract a workout from these screenshots. Try clearer screenshots or fewer images.");
       }
 
       // 4) Only now is it safe to touch each workout item
       const cleaned = normalized
         .filter(Boolean)
-       .map((w: any) => ({
-  ...w,
-  // keep AI-provided date if you want it later, but do NOT prefill UI
-  aiDate: w.date ?? w.workoutDate,
-  date: "", // <-- blank, user must select
-  exercises: Array.isArray(w.exercises)
-  ? w.exercises.map((ex: any) => ({
-      ...ex,
-      muscleGroup: pickPrimaryMuscleGroup(ex), // ✅ sets default
-    }))
-  : [],
-}))
-// no date filter anymore
-;
+        .map((w: any) => {
+          const exercises = Array.isArray(w.exercises) ? w.exercises : [];
+
+          const patchedExercises = exercises.map((ex: any) => {
+            // preserve any existing value if it’s valid
+            const existing = normalizeGroup(ex?.muscleGroup);
+
+            // try AI distributions first (if present)
+            const distTop =
+              Array.isArray(ex?.muscleDistributions) && ex.muscleDistributions.length > 0
+                ? ex.muscleDistributions
+                    .slice()
+                    .sort((a: any, b: any) => (b?.factor ?? 0) - (a?.factor ?? 0))[0]
+                : null;
+
+            const fromDist = normalizeGroup(distTop?.group);
+
+            // fallback: infer from name
+            const fromName = inferMuscleGroupFromName(ex?.name);
+
+            return {
+              ...ex,
+              // ✅ default to Other so it feels "auto-detected" and stays consistent for analytics
+              muscleGroup: existing ?? fromDist ?? fromName ?? 'Other',
+            };
+          });
+
+          return {
+            ...w,
+            // keep AI-provided date if you want it later, but do NOT prefill UI
+            aiDate: w.date ?? w.workoutDate,
+            date: '', // user selects
+            exercises: patchedExercises,
+          };
+        });
 
       if (cleaned.length === 0) {
         console.warn('Normalized workouts empty:', normalized);
@@ -184,7 +255,13 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
     setPendingWorkouts(updated);
   };
 
-  const handleUpdateSet = (wIdx: number, eIdx: number, sIdx: number, field: keyof SetRecord, value: string | number) => {
+  const handleUpdateSet = (
+    wIdx: number,
+    eIdx: number,
+    sIdx: number,
+    field: keyof SetRecord,
+    value: string | number
+  ) => {
     if (!pendingWorkouts) return;
     const updated = [...pendingWorkouts];
     const set = updated[wIdx].exercises[eIdx].sets[sIdx];
@@ -215,46 +292,44 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
       setNumber: sets.length + 1,
       reps: lastSet?.reps || 10,
       weight: lastSet?.weight || 0,
-      unit: lastSet?.unit || 'kg'
+      unit: lastSet?.unit || 'kg',
     });
     setPendingWorkouts(updated);
   };
 
-const confirmUpload = async () => {
-  if (!pendingWorkouts || isSaving) return;
+  const confirmUpload = async () => {
+    if (!pendingWorkouts || isSaving) return;
 
-  const missingDate = pendingWorkouts.some((w) => !w.date);
-  if (missingDate) {
-    setSaveError("Please select a session date before logging.");
-    return;
-  }
+    const missingDate = pendingWorkouts.some((w) => !w.date);
+    if (missingDate) {
+      setSaveError('Please select a session date before logging.');
+      return;
+    }
 
-  setIsSaving(true);
-  setSaveError(null);
+    setIsSaving(true);
+    setSaveError(null);
 
-  try {
-    const finalized = pendingWorkouts.map((w) => ({
-      ...w,
-      totalVolume: w.exercises.reduce(
-        (acc, ex) =>
-          acc +
-          ex.sets.reduce((sAcc, s) => sAcc + s.reps * s.weight, 0),
-        0
-      ),
-    }));
+    try {
+      const finalized = pendingWorkouts.map((w) => ({
+        ...w,
+        totalVolume: w.exercises.reduce(
+          (acc, ex) => acc + ex.sets.reduce((sAcc, s) => sAcc + s.reps * s.weight, 0),
+          0
+        ),
+      }));
 
-    await onWorkoutsExtracted(finalized);
+      await onWorkoutsExtracted(finalized);
 
-    setPendingWorkouts(null);
-    setSelectedFiles([]);
-    setSelectedPlatform(null);
-  } catch (err: any) {
-    console.error("Confirmation Error:", err);
-    setSaveError(err.message || "An unexpected error occurred while saving your data.");
-  } finally {
-    setIsSaving(false);
-  }
-};
+      setPendingWorkouts(null);
+      setSelectedFiles([]);
+      setSelectedPlatform(null);
+    } catch (err: any) {
+      console.error('Confirmation Error:', err);
+      setSaveError(err.message || 'An unexpected error occurred while saving your data.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   if (!selectedPlatform) {
     return (
@@ -316,38 +391,55 @@ const confirmUpload = async () => {
 
         <div className="space-y-12">
           {pendingWorkouts.map((workout, wIdx) => (
-            <div key={workout.id ?? `${wIdx}`} className="bg-slate-900 border border-slate-800 rounded-[2rem] overflow-hidden shadow-2xl">
+            <div
+              key={(workout as any).id ?? `${wIdx}`}
+              className="bg-slate-900 border border-slate-800 rounded-[2rem] overflow-hidden shadow-2xl"
+            >
               <div className="bg-slate-800/50 p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-center space-x-4">
                   <div className="bg-blue-600/20 p-3 rounded-2xl">
                     <PencilSquareIcon className="w-6 h-6 text-blue-500" />
                   </div>
                   <div>
-                    <label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest block mb-1">Session Date</label>
-              <input
-                type="date"
-              value={(workout.date ?? "")}
-              onChange={(e) => handleUpdateWorkoutDate(wIdx, e.target.value)}
-              className="bg-transparent border-b border-slate-700 font-bold text-white outline-none focus:border-blue-500 transition-colors"
-            required
-            />
-
+                    <label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest block mb-1">
+                      Session Date
+                    </label>
+                    <input
+                      type="date"
+                      value={workout.date ?? ''}
+                      onChange={(e) => handleUpdateWorkoutDate(wIdx, e.target.value)}
+                      className="bg-transparent border-b border-slate-700 font-bold text-white outline-none focus:border-blue-500 transition-colors"
+                      required
+                    />
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-[10px] uppercase font-bold text-slate-500 tracking-widest mb-1">Calculated Tonnage</p>
+                  <p className="text-[10px] uppercase font-bold text-slate-500 tracking-widest mb-1">
+                    Calculated Tonnage
+                  </p>
                   <p className="text-2xl font-mono font-bold text-blue-400">
-                    {workout.exercises.reduce((acc, ex) => acc + ex.sets.reduce((sAcc, s) => sAcc + (s.reps * (s.weight || 0)), 0), 0).toLocaleString()}kg
+                    {workout.exercises
+                      .reduce(
+                        (acc, ex) => acc + ex.sets.reduce((sAcc, s) => sAcc + s.reps * (s.weight || 0), 0),
+                        0
+                      )
+                      .toLocaleString()}
+                    kg
                   </p>
                 </div>
               </div>
 
               <div className="p-6 space-y-8">
                 {workout.exercises.map((ex, eIdx) => (
-                  <div key={eIdx} className="bg-slate-950/50 rounded-[2rem] border border-slate-800/50 p-6 group/ex">
+                  <div
+                    key={eIdx}
+                    className="bg-slate-950/50 rounded-[2rem] border border-slate-800/50 p-6 group/ex"
+                  >
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                       <div>
-                        <label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest block mb-2">Exercise Name</label>
+                        <label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest block mb-2">
+                          Exercise Name
+                        </label>
                         <input
                           className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 w-full font-bold text-white outline-none focus:border-blue-500 transition-all"
                           value={ex.name}
@@ -355,7 +447,9 @@ const confirmUpload = async () => {
                         />
                       </div>
                       <div>
-                        <label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest block mb-2">Muscle Group</label>
+                        <label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest block mb-2">
+                          Muscle Group
+                        </label>
                         <div className="relative">
                           <TagIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
                           <select
@@ -364,8 +458,10 @@ const confirmUpload = async () => {
                             onChange={(e) => handleUpdateExerciseField(wIdx, eIdx, 'muscleGroup', e.target.value)}
                           >
                             <option value="">Select Group...</option>
-                            {MUSCLE_GROUPS.map(g => (
-                              <option key={g} value={g}>{g}</option>
+                            {MUSCLE_GROUPS.map((g) => (
+                              <option key={g} value={g}>
+                                {g}
+                              </option>
                             ))}
                           </select>
                         </div>
@@ -380,7 +476,10 @@ const confirmUpload = async () => {
                         <span className="text-right">Remove</span>
                       </div>
                       {ex.sets.map((set, sIdx) => (
-                        <div key={sIdx} className="grid grid-cols-4 items-center bg-slate-900/50 rounded-xl px-2 py-2 border border-slate-800/30 group/set">
+                        <div
+                          key={sIdx}
+                          className="grid grid-cols-4 items-center bg-slate-900/50 rounded-xl px-2 py-2 border border-slate-800/30 group/set"
+                        >
                           <span className="text-slate-400 font-mono text-sm ml-2">#{sIdx + 1}</span>
                           <input
                             type="number"
@@ -438,7 +537,10 @@ const confirmUpload = async () => {
                 <p className="text-xs font-black uppercase tracking-tighter mb-0.5">Save Failed</p>
                 <p className="text-sm font-bold">{saveError}</p>
               </div>
-              <button onClick={() => setSaveError(null)} className="p-1 hover:bg-white/10 rounded-lg transition-colors">
+              <button
+                onClick={() => setSaveError(null)}
+                className="p-1 hover:bg-white/10 rounded-lg transition-colors"
+              >
                 <XMarkIcon className="w-5 h-5" />
               </button>
             </div>
@@ -454,7 +556,7 @@ const confirmUpload = async () => {
             Discard
           </button>
           <button
-            disabled={isSaving || pendingWorkouts.some(w => !w.date)}
+            disabled={isSaving || pendingWorkouts.some((w) => !w.date)}
             onClick={confirmUpload}
             className="flex-[2] bg-blue-600 text-white py-4 rounded-[1.5rem] font-bold shadow-2xl shadow-blue-900/40 hover:bg-blue-500 transition-all flex items-center justify-center space-x-3 disabled:opacity-50"
           >
@@ -466,6 +568,14 @@ const confirmUpload = async () => {
             <span>{isSaving ? 'Syncing...' : 'Log Session Data'}</span>
           </button>
         </div>
+
+        <style>{`
+          @keyframes shake {
+            0%, 100% { transform: translateX(-50%) rotate(0deg); }
+            25% { transform: translateX(-51%) rotate(-1deg); }
+            75% { transform: translateX(-49%) rotate(1deg); }
+          }
+        `}</style>
       </div>
     );
   }
@@ -474,14 +584,14 @@ const confirmUpload = async () => {
     <div className="max-w-4xl mx-auto space-y-8 animate-fadeIn">
       <header className="flex items-center justify-between">
         <div>
-        <button
-          disabled={isProcessing || isSaving}
-          onClick={() => setSelectedPlatform(null)}
-          className="flex items-center space-x-1 text-slate-500 hover:text-blue-500 transition-colors mb-2 text-sm font-bold uppercase tracking-wider"
-      >
-  <ChevronLeftIcon className="w-4 h-4" />
-  <span>Change Platform</span>
-</button>
+          <button
+            disabled={isProcessing || isSaving}
+            onClick={() => setSelectedPlatform(null)}
+            className="flex items-center space-x-1 text-slate-500 hover:text-blue-500 transition-colors mb-2 text-sm font-bold uppercase tracking-wider"
+          >
+            <ChevronLeftIcon className="w-4 h-4" />
+            <span>Change Platform</span>
+          </button>
 
           <h1 className="text-3xl font-bold mb-2">Analysis Hub</h1>
           <p className="text-slate-400">Upload your Strength Trainer summaries to begin.</p>
@@ -509,10 +619,16 @@ const confirmUpload = async () => {
           <div className="w-full space-y-6">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {selectedFiles.map((f, i) => (
-                <div key={i} className="relative group/thumb aspect-[3/4] rounded-2xl overflow-hidden border border-slate-700 shadow-xl">
+                <div
+                  key={i}
+                  className="relative group/thumb aspect-[3/4] rounded-2xl overflow-hidden border border-slate-700 shadow-xl"
+                >
                   <img src={f.preview} alt={`Preview ${i}`} className="w-full h-full object-cover" />
                   <button
-                    onClick={(e) => { e.stopPropagation(); removeFile(i); }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeFile(i);
+                    }}
                     className="absolute top-2 right-2 p-1.5 bg-red-600 rounded-full text-white opacity-0 group-hover/thumb:opacity-100 transition-opacity"
                   >
                     <TrashIcon className="w-4 h-4" />
