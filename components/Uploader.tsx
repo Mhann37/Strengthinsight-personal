@@ -1,8 +1,8 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { processWorkoutScreenshots } from '../geminiService';
 import { useUserSettings } from '../contexts/UserSettingsContext';
-import { calcWorkoutVolumeKg, normalizeUnit, fromKg } from '../utils/unit';
 import type { Unit } from '../utils/unit';
+import { calcWorkoutVolumeKg, normalizeUnit, fromKg, toKg } from '../utils/unit';
 import { Workout, Exercise, SetRecord } from '../types';
 import {
   CloudArrowUpIcon,
@@ -29,24 +29,15 @@ const normalizeGroup = (g: any): string | null => {
   return match ?? null;
 };
 
-// Smart fallback categorizer (same idea as MuscleGroups.tsx)
+// Smart fallback categorizer
 const inferMuscleGroupFromName = (name: string): string | null => {
   const n = (name || '').toLowerCase();
 
-  // Chest
-  if (
-    n.includes('bench') ||
-    n.includes('chest') ||
-    n.includes('fly') ||
-    n.includes('pushup') ||
-    n.includes('push-up')
-  )
+  if (n.includes('bench') || n.includes('chest') || n.includes('fly') || n.includes('pushup') || n.includes('push-up'))
     return 'Chest';
 
-  // Back
   if (n.includes('row') || n.includes('pull') || n.includes('lat') || n.includes('chin')) return 'Back';
 
-  // Shoulders
   if (
     n.includes('shoulder') ||
     n.includes('lateral') ||
@@ -56,27 +47,12 @@ const inferMuscleGroupFromName = (name: string): string | null => {
   )
     return 'Shoulders';
 
-  // Arms
-  if (
-    n.includes('curl') ||
-    n.includes('tricep') ||
-    n.includes('bicep') ||
-    n.includes('extension') ||
-    n.includes('dip')
-  )
+  if (n.includes('curl') || n.includes('tricep') || n.includes('bicep') || n.includes('extension') || n.includes('dip'))
     return 'Arms';
 
-  // Legs
-  if (
-    n.includes('squat') ||
-    n.includes('leg') ||
-    n.includes('lung') ||
-    n.includes('calf') ||
-    n.includes('deadlift')
-  )
+  if (n.includes('squat') || n.includes('leg') || n.includes('lung') || n.includes('calf') || n.includes('deadlift'))
     return 'Legs';
 
-  // Core
   if (n.includes('plank') || n.includes('crunch') || n.includes('abs') || n.includes('core')) return 'Core';
 
   return null;
@@ -93,6 +69,39 @@ interface FileWithPreview {
 
 type Platform = 'whoop' | 'garmin' | null;
 
+/**
+ * Convert every set weight in a workout list from its current unit to nextUnit.
+ * This avoids the “kg number wearing lbs label” problem.
+ */
+const convertPendingWorkoutsToUnit = (workouts: Workout[], nextUnit: Unit): Workout[] => {
+  return workouts.map((w) => ({
+    ...w,
+    exercises: (w.exercises || []).map((ex) => ({
+      ...ex,
+      sets: (ex.sets || []).map((s, idx) => {
+        const currentUnit = normalizeUnit((s as any).unit);
+        const kg = toKg(Number((s as any).weight ?? 0), currentUnit);
+        const converted = fromKg(kg, nextUnit);
+
+        // Keep a stable, sensible precision (Whoop often shows 0.1 in lbs, 0.01 in kg).
+        // You can tweak this later if you prefer.
+        const rounded =
+          nextUnit === 'lbs'
+            ? Math.round(converted * 10) / 10
+            : Math.round(converted * 100) / 100;
+
+        return {
+          ...(s as any),
+          setNumber: (s as any).setNumber ?? idx + 1,
+          reps: Number((s as any).reps ?? 0),
+          weight: rounded,
+          unit: nextUnit,
+        } as any;
+      }),
+    })),
+  }));
+};
+
 const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
   const [selectedPlatform, setSelectedPlatform] = useState<Platform>(null);
   const [selectedFiles, setSelectedFiles] = useState<FileWithPreview[]>([]);
@@ -101,14 +110,21 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
   const [error, setError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [pendingWorkouts, setPendingWorkouts] = useState<Workout[] | null>(null);
-  const [uploadUnitOverride, setUploadUnitOverride] = useState<Unit | null>(null);
+
+  // Per-upload override (defaults to user preference whenever not in verify mode)
+  const [uploadUnit, setUploadUnit] = useState<Unit>('kg');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { settings } = useUserSettings();
-  const preferredUnit = settings.unit;
+  const preferredUnit = settings.unit; // global preference (kg/lbs)
 
-  const effectiveUploadUnit: Unit = uploadUnitOverride ?? preferredUnit;
+  // Keep uploadUnit aligned to global preference when NOT actively verifying a workout
+  useEffect(() => {
+    if (!pendingWorkouts) {
+      setUploadUnit(preferredUnit);
+    }
+  }, [preferredUnit, pendingWorkouts]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []) as File[];
@@ -133,23 +149,6 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
 
   const removeFile = (index: number) => {
     setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const applyUnitOverrideToPending = (nextUnit: Unit) => {
-    if (!pendingWorkouts) return;
-
-    const updated = pendingWorkouts.map((w) => ({
-      ...w,
-      exercises: (w.exercises || []).map((ex) => ({
-        ...ex,
-        sets: (ex.sets || []).map((s: any) => ({
-          ...s,
-          unit: normalizeUnit(nextUnit),
-        })),
-      })),
-    }));
-
-    setPendingWorkouts(updated);
   };
 
   const handleProcess = async () => {
@@ -194,25 +193,21 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
         }
       }
 
-      // 3) HARD GUARD: stop here if not an array
+      // 3) HARD GUARD
       if (!Array.isArray(normalized)) {
         console.warn('Unexpected AI response shape:', raw);
-        throw new Error(
-          "We couldn't extract a workout from these screenshots. Try clearer screenshots or fewer images."
-        );
+        throw new Error("We couldn't extract a workout from these screenshots. Try clearer screenshots or fewer images.");
       }
 
-      // 4) Only now is it safe to touch each workout item
+      // 4) Clean + normalize sets (IMPORTANT: preserve AI unit if present)
       const cleaned = normalized
         .filter(Boolean)
         .map((w: any) => {
           const exercises = Array.isArray(w.exercises) ? w.exercises : [];
 
           const patchedExercises = exercises.map((ex: any) => {
-            // preserve any existing value if it’s valid
             const existing = normalizeGroup(ex?.muscleGroup);
 
-            // try AI distributions first (if present)
             const distTop =
               Array.isArray(ex?.muscleDistributions) && ex.muscleDistributions.length > 0
                 ? ex.muscleDistributions
@@ -221,26 +216,22 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
                 : null;
 
             const fromDist = normalizeGroup(distTop?.group);
-
-            // fallback: infer from name
             const fromName = inferMuscleGroupFromName(ex?.name);
 
-            // ✅ Phase 1: normalize sets (numeric coercion + unit normalization)
-            // IMPORTANT: use effectiveUploadUnit so US users can override per upload even if their global setting is kg.
+            // Key: if AI provided unit, keep it. If not, fall back to *uploadUnit* (which defaults to preferredUnit).
             const sets = Array.isArray(ex?.sets)
               ? ex.sets.map((s: any, idx: number) => ({
                   ...s,
                   setNumber: s?.setNumber ?? idx + 1,
                   reps: Number(s?.reps ?? 0),
                   weight: Number(s?.weight ?? 0),
-                  unit: normalizeUnit(s?.unit ?? effectiveUploadUnit),
+                  unit: normalizeUnit(s?.unit ?? uploadUnit),
                 }))
               : [];
 
             return {
               ...ex,
               sets,
-              // ✅ default to Other so it feels "auto-detected" and stays consistent for analytics
               muscleGroup: existing ?? fromDist ?? fromName ?? 'Other',
             };
           });
@@ -248,7 +239,7 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
           const workout: Workout = {
             ...w,
             aiDate: w.date ?? w.workoutDate,
-            date: '', // user selects
+            date: '',
             exercises: patchedExercises,
           };
 
@@ -260,7 +251,13 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
         throw new Error('No workouts detected. Please try clearer screenshots.');
       }
 
-      setPendingWorkouts(cleaned as any);
+      /**
+       * Now: enforce that the verify screen displays in uploadUnit (Metric/Imperial).
+       * Even if AI returned kg (60.01) from a lbs screenshot, this conversion makes it show lbs if uploadUnit=lbs.
+       */
+      const convertedForDisplay = convertPendingWorkoutsToUnit(cleaned as any, uploadUnit);
+
+      setPendingWorkouts(convertedForDisplay as any);
     } catch (err: any) {
       console.error(err);
       let msg = 'Failed to extract data. Please ensure the screenshots are clear.';
@@ -341,10 +338,10 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
 
     sets.push({
       setNumber: sets.length + 1,
-      reps: lastSet?.reps || 10,
-      weight: lastSet?.weight || 0,
-      unit: normalizeUnit(lastSet?.unit ?? effectiveUploadUnit),
-    });
+      reps: (lastSet as any)?.reps || 10,
+      weight: (lastSet as any)?.weight || 0,
+      unit: normalizeUnit((lastSet as any)?.unit ?? uploadUnit),
+    } as any);
 
     setPendingWorkouts(updated);
   };
@@ -362,6 +359,7 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
     setSaveError(null);
 
     try {
+      // Always compute canonical totalVolume in kg (safe even if uploadUnit is lbs)
       const finalized = pendingWorkouts.map((w) => ({
         ...w,
         totalVolume: calcWorkoutVolumeKg(w),
@@ -372,13 +370,26 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
       setPendingWorkouts(null);
       setSelectedFiles([]);
       setSelectedPlatform(null);
-      setUploadUnitOverride(null);
     } catch (err: any) {
       console.error('Confirmation Error:', err);
       setSaveError(err.message || 'An unexpected error occurred while saving your data.');
     } finally {
       setIsSaving(false);
     }
+  };
+
+  // UI helpers
+  const unitLabel = useMemo(() => (uploadUnit === 'lbs' ? 'lbs (Imperial)' : 'kg (Metric)'), [uploadUnit]);
+
+  const toggleUploadUnit = (next: Unit) => {
+    if (!pendingWorkouts) {
+      setUploadUnit(next);
+      return;
+    }
+    // Convert ALL pending values live
+    const converted = convertPendingWorkoutsToUnit(pendingWorkouts, next);
+    setPendingWorkouts(converted);
+    setUploadUnit(next);
   };
 
   if (!selectedPlatform) {
@@ -435,29 +446,35 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
     return (
       <div className="max-w-4xl mx-auto space-y-8 animate-fadeIn pb-20">
         <header className="text-center space-y-3">
-          <h1 className="text-3xl font-bold">Verify Extraction</h1>
+          <h1 className="text-3xl font-bold mb-1">Verify Extraction</h1>
           <p className="text-slate-400">Please audit the muscle group mapping and session data.</p>
 
-          {/* ✅ Per-upload override */}
+          {/* Per-upload override toggle */}
           <div className="flex items-center justify-center gap-3 pt-2">
-            <span className="text-[10px] uppercase font-bold text-slate-500 tracking-widest">
-              This upload uses
-            </span>
-            <select
-              value={effectiveUploadUnit}
-              onChange={(e) => {
-                const next = normalizeUnit(e.target.value) as Unit;
-                setUploadUnitOverride(next);
-                applyUnitOverrideToPending(next);
-              }}
-              className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 text-sm font-black text-blue-400 outline-none focus:border-blue-500 transition-all"
-            >
-              <option value="kg">kg (Metric)</option>
-              <option value="lbs">lbs (Imperial)</option>
-            </select>
-            <span className="text-[10px] text-slate-600 font-bold uppercase tracking-widest">
-              (Override)
-            </span>
+            <span className="text-[10px] uppercase font-black tracking-widest text-slate-500">This upload uses</span>
+            <div className="flex bg-slate-900 border border-slate-800 rounded-2xl p-1">
+              <button
+                onClick={() => toggleUploadUnit('kg')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                  uploadUnit === 'kg'
+                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
+                    : 'text-slate-500 hover:text-slate-300'
+                }`}
+              >
+                Metric
+              </button>
+              <button
+                onClick={() => toggleUploadUnit('lbs')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                  uploadUnit === 'lbs'
+                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
+                    : 'text-slate-500 hover:text-slate-300'
+                }`}
+              >
+                Imperial
+              </button>
+            </div>
+            <span className="text-[10px] font-black text-slate-500">{unitLabel}</span>
           </div>
         </header>
 
@@ -486,12 +503,10 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-[10px] uppercase font-bold text-slate-500 tracking-widest mb-1">
-                    Calculated Tonnage
-                  </p>
+                  <p className="text-[10px] uppercase font-bold text-slate-500 tracking-widest mb-1">Calculated Tonnage</p>
                   <p className="text-2xl font-mono font-bold text-blue-400">
-                    {Math.round(fromKg(calcWorkoutVolumeKg(workout), preferredUnit)).toLocaleString()}
-                    {preferredUnit}
+                    {Math.round(fromKg(calcWorkoutVolumeKg(workout), uploadUnit)).toLocaleString()}
+                    {uploadUnit}
                   </p>
                 </div>
               </div>
@@ -542,18 +557,21 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
                         <span>Weight</span>
                         <span className="text-right">Remove</span>
                       </div>
+
                       {ex.sets.map((set, sIdx) => (
                         <div
                           key={sIdx}
                           className="grid grid-cols-4 items-center bg-slate-900/50 rounded-xl px-2 py-2 border border-slate-800/30 group/set"
                         >
                           <span className="text-slate-400 font-mono text-sm ml-2">#{sIdx + 1}</span>
+
                           <input
                             type="number"
                             value={set.reps}
                             onChange={(e) => handleUpdateSet(wIdx, eIdx, sIdx, 'reps', e.target.value)}
                             className="bg-slate-800 rounded-lg px-2 py-1 text-sm font-mono w-16 outline-none focus:ring-1 focus:ring-blue-500 text-white"
                           />
+
                           <div className="flex items-center space-x-2">
                             <input
                               type="number"
@@ -565,6 +583,7 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
                               {normalizeUnit((set as any).unit)}
                             </span>
                           </div>
+
                           <div className="text-right">
                             <button
                               onClick={() => removeSet(wIdx, eIdx, sIdx)}
@@ -575,6 +594,7 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
                           </div>
                         </div>
                       ))}
+
                       <div className="flex gap-2">
                         <button
                           onClick={() => addSet(wIdx, eIdx)}
@@ -583,6 +603,7 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
                           <PlusIcon className="w-4 h-4" />
                           <span>Add Set</span>
                         </button>
+
                         <button
                           onClick={() => removeExercise(wIdx, eIdx)}
                           className="px-4 py-3 border border-slate-800 rounded-xl text-slate-600 hover:text-red-500 transition-colors"
@@ -606,10 +627,7 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
                 <p className="text-xs font-black uppercase tracking-tighter mb-0.5">Save Failed</p>
                 <p className="text-sm font-bold">{saveError}</p>
               </div>
-              <button
-                onClick={() => setSaveError(null)}
-                className="p-1 hover:bg-white/10 rounded-lg transition-colors"
-              >
+              <button onClick={() => setSaveError(null)} className="p-1 hover:bg-white/10 rounded-lg transition-colors">
                 <XMarkIcon className="w-5 h-5" />
               </button>
             </div>
@@ -624,6 +642,7 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
           >
             Discard
           </button>
+
           <button
             disabled={isSaving || pendingWorkouts.some((w) => !w.date)}
             onClick={confirmUpload}
@@ -665,6 +684,12 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
           <h1 className="text-3xl font-bold mb-2">Analysis Hub</h1>
           <p className="text-slate-400">Upload your Strength Trainer summaries to begin.</p>
         </div>
+
+        {/* Optional: show current global preference here (informational only) */}
+        <div className="hidden md:flex items-center gap-2 text-xs text-slate-500">
+          <LockClosedIcon className="w-4 h-4 text-slate-600" />
+          <span>Preferred: <span className="text-slate-300 font-bold">{preferredUnit}</span></span>
+        </div>
       </header>
 
       <div
@@ -688,10 +713,7 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
           <div className="w-full space-y-6">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {selectedFiles.map((f, i) => (
-                <div
-                  key={i}
-                  className="relative group/thumb aspect-[3/4] rounded-2xl overflow-hidden border border-slate-700 shadow-xl"
-                >
+                <div key={i} className="relative group/thumb aspect-[3/4] rounded-2xl overflow-hidden border border-slate-700 shadow-xl">
                   <img src={f.preview} alt={`Preview ${i}`} className="w-full h-full object-cover" />
                   <button
                     onClick={(e) => {
@@ -749,14 +771,6 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
           </>
         )}
       </button>
-
-      <style>{`
-        @keyframes shake {
-          0%, 100% { transform: translateX(-50%) rotate(0deg); }
-          25% { transform: translateX(-51%) rotate(-1deg); }
-          75% { transform: translateX(-49%) rotate(1deg); }
-        }
-      `}</style>
     </div>
   );
 };
