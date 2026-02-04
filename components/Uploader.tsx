@@ -694,7 +694,7 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
           <img
             src="/examples/whoop-strength-summary.jpg"
             alt="Example WHOOP Strength Trainer exercise summary screenshot"
-            className="w-full h-auto object-contain"
+          className="max-h-64 w-auto object-contain mx-auto rounded-xl border border-slate-800 bg-slate-950/40 p-3 opacity-90"
             loading="lazy"
           />
         </div>
