@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   auth, 
@@ -22,6 +21,7 @@ import History from './components/History';
 import Analytics from './components/Analytics';
 import DataExport from './components/DataExport';
 import MuscleGroups from './components/MuscleGroups';
+import { UserSettingsProvider } from './contexts/UserSettingsContext';
 import Login from './components/Login';
 import { 
   ChartBarIcon, 
@@ -208,93 +208,102 @@ const App: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen flex bg-slate-950">
-      <div className="lg:hidden fixed top-0 left-0 right-0 bg-slate-900/80 backdrop-blur-md z-40 px-4 py-3 flex items-center justify-between border-b border-slate-800">
-        <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-white italic">S</div>
-          <span className="font-bold text-xl">StrengthInsight</span>
-        </div>
-        <button onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
-          {isSidebarOpen ? <XMarkIcon className="w-7 h-7 text-slate-400" /> : <Bars3Icon className="w-7 h-7 text-slate-400" />}
-        </button>
-      </div>
-
-      <aside className={`
-        fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 border-r border-slate-800 p-6 transform transition-transform duration-300 lg:relative lg:translate-x-0 flex flex-col
-        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
-        <div className="flex items-center space-x-3 mb-10 hidden lg:flex">
-          <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-white text-xl italic">S</div>
-          <span className="font-bold text-2xl">StrengthInsight</span>
-        </div>
-
-        <nav className="flex-1 space-y-1">
-          <NavItem id="dashboard" label="Overview" icon={Square2StackIcon} />
-          <NavItem id="upload" label="Upload Workout" icon={ArrowUpTrayIcon} />
-          <NavItem id="analytics" label="Progression" icon={ChartBarIcon} />
-          <NavItem id="muscleGroups" label="Muscle Groups" icon={UserIcon} isBeta={true} />
-          <NavItem id="history" label="Workout Logs" icon={ClockIcon} />
-          
-          <div className="pt-4 mt-4 border-t border-slate-800 space-y-1">
-             <NavItem id="export" label="Export Data" icon={TableCellsIcon} />
+    <UserSettingsProvider userId={user.uid}>
+      <div className="min-h-screen flex bg-slate-950">
+        <div className="lg:hidden fixed top-0 left-0 right-0 bg-slate-900/80 backdrop-blur-md z-40 px-4 py-3 flex items-center justify-between border-b border-slate-800">
+          <div className="flex items-center space-x-2">
+            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-white italic">S</div>
+            <span className="font-bold text-xl">StrengthInsight</span>
           </div>
-        </nav>
-
-        <div className="mt-auto pt-6 border-t border-slate-800">
-          <div className="flex items-center space-x-3 mb-4 px-4 overflow-hidden">
-            {user.photoURL ? (
-              <img src={user.photoURL} alt="Avatar" className="w-8 h-8 rounded-full border border-slate-700" />
-            ) : (
-              <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-400 uppercase">
-                {user.displayName?.charAt(0) || user.email?.charAt(0) || 'U'}
-              </div>
-            )}
-            <div className="flex-1 min-w-0">
-               <p className="text-sm font-bold text-slate-200 truncate">{user.displayName || 'Athlete'}</p>
-               <div className="flex items-center space-x-1.5 text-slate-500">
-                 <p className="text-xs truncate max-w-[120px]">{user.email}</p>
-                 <LockClosedIcon className="w-3 h-3 text-slate-600" title="Data Isolated" />
-               </div>
-            </div>
-          </div>
-          <button onClick={handleLogout} className="flex items-center space-x-3 px-4 py-3 rounded-xl text-red-400 hover:bg-red-500/10 w-full transition-colors">
-            <ArrowRightOnRectangleIcon className="w-6 h-6" />
-            <span className="font-medium">Logout</span>
+          <button onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+            {isSidebarOpen ? <XMarkIcon className="w-7 h-7 text-slate-400" /> : <Bars3Icon className="w-7 h-7 text-slate-400" />}
           </button>
         </div>
-      </aside>
 
-      <main className="flex-1 overflow-y-auto p-4 lg:p-10 pt-20 lg:pt-10">
-        <div className="max-w-6xl mx-auto">
-          {dataLoading && workouts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20">
-              <div className="w-8 h-8 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin mb-4"></div>
-              <p className="text-slate-500 text-sm font-medium">Syncing Records...</p>
+        <aside className={`
+          fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 border-r border-slate-800 p-6 transform transition-transform duration-300 lg:relative lg:translate-x-0 flex flex-col
+          ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+        `}>
+          <div className="flex items-center space-x-3 mb-10 hidden lg:flex">
+            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-white text-xl italic">S</div>
+            <span className="font-bold text-2xl">StrengthInsight</span>
+          </div>
+
+          <nav className="flex-1 space-y-1">
+            <NavItem id="dashboard" label="Overview" icon={Square2StackIcon} />
+            <NavItem id="upload" label="Upload Workout" icon={ArrowUpTrayIcon} />
+            <NavItem id="analytics" label="Progression" icon={ChartBarIcon} />
+            <NavItem id="muscleGroups" label="Muscle Groups" icon={UserIcon} isBeta={true} />
+            <NavItem id="history" label="Workout Logs" icon={ClockIcon} />
+            
+            <div className="pt-4 mt-4 border-t border-slate-800 space-y-1">
+              <NavItem id="export" label="Export Data" icon={TableCellsIcon} />
             </div>
-          ) : (
-            <>
-              {view === 'dashboard' && <Dashboard workouts={workouts} userName={user?.displayName} />}
-              {view === 'muscleGroups' && <MuscleGroups workouts={workouts} />}
-              {view === 'upload' && <Uploader onWorkoutsExtracted={addWorkouts} />}
-              {view === 'history' && <History workouts={workouts} onDelete={deleteWorkout} />}
-              {view === 'analytics' && <Analytics workouts={workouts} />}
-              {view === 'export' && <DataExport workouts={workouts} />}
-            </>
-          )}
-        </div>
-        <footer className="mt-16 pb-6 text-center text-xs text-slate-500">
-  <a
-    href="/privacy.html"
-    target="_blank"
-    rel="noopener noreferrer"
-    className="hover:text-blue-400 transition-colors"
-  >
-    Privacy Policy
-  </a>
-</footer>
-      </main>
-      {isSidebarOpen && <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden" onClick={() => setIsSidebarOpen(false)} />}
-    </div>
+          </nav>
+
+          <div className="mt-auto pt-6 border-t border-slate-800">
+            <div className="flex items-center space-x-3 mb-4 px-4 overflow-hidden">
+              {user.photoURL ? (
+                <img src={user.photoURL} alt="Avatar" className="w-8 h-8 rounded-full border border-slate-700" />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-400 uppercase">
+                  {user.displayName?.charAt(0) || user.email?.charAt(0) || 'U'}
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-slate-200 truncate">{user.displayName || 'Athlete'}</p>
+                <div className="flex items-center space-x-1.5 text-slate-500">
+                  <p className="text-xs truncate max-w-[120px]">{user.email}</p>
+                  <LockClosedIcon className="w-3 h-3 text-slate-600" title="Data Isolated" />
+                </div>
+              </div>
+            </div>
+            <button onClick={handleLogout} className="flex items-center space-x-3 px-4 py-3 rounded-xl text-red-400 hover:bg-red-500/10 w-full transition-colors">
+              <ArrowRightOnRectangleIcon className="w-6 h-6" />
+              <span className="font-medium">Logout</span>
+            </button>
+          </div>
+        </aside>
+
+        <main className="flex-1 overflow-y-auto p-4 lg:p-10 pt-20 lg:pt-10">
+          <div className="max-w-6xl mx-auto">
+            {dataLoading && workouts.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20">
+                <div className="w-8 h-8 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin mb-4"></div>
+                <p className="text-slate-500 text-sm font-medium">Syncing Records...</p>
+              </div>
+            ) : (
+              <>
+                {view === 'dashboard' && <Dashboard workouts={workouts} userName={user?.displayName} />}
+                {view === 'muscleGroups' && <MuscleGroups workouts={workouts} />}
+                {view === 'upload' && <Uploader onWorkoutsExtracted={addWorkouts} />}
+                {view === 'history' && <History workouts={workouts} onDelete={deleteWorkout} />}
+                {view === 'analytics' && <Analytics workouts={workouts} />}
+                {view === 'export' && <DataExport workouts={workouts} />}
+              </>
+            )}
+          </div>
+
+          <footer className="mt-16 pb-6 text-center text-xs text-slate-500">
+            <a
+              href="/privacy.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-blue-400 transition-colors"
+            >
+              Privacy Policy
+            </a>
+          </footer>
+        </main>
+
+        {isSidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
+            onClick={() => setIsSidebarOpen(false)}
+          />
+        )}
+      </div>
+    </UserSettingsProvider>
   );
 };
 
