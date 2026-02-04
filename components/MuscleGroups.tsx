@@ -345,7 +345,8 @@ const MuscleGroups: React.FC<{ workouts: Workout[] }> = ({ workouts }) => {
                         </p>
                         <p className="text-3xl font-mono font-bold text-white">
                           {(volumeDisplay / 1000).toFixed(2)}
-                          <span className="text-sm opacity-50 ml-1">k{unit}</span>
+                         <span className="text-sm opacity-50 ml-1">k {unit}</span>
+
                         </p>
                       </div>
                       <div className="bg-blue-600/10 p-2 rounded-xl">
