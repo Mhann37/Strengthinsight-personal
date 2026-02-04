@@ -1,8 +1,9 @@
-
 import React from 'react';
 import { Workout } from '../types';
 import WeeklyHeatMap from './WeeklyHeatMap';
 import InsightsPanel from './InsightsPanel';
+import { useUserSettings } from '../contexts/UserSettingsContext';
+import { fromKg } from '../utils/unit';
 import { FireIcon, BoltIcon, TrophyIcon } from '@heroicons/react/24/solid';
 
 interface DashboardProps {
@@ -11,7 +12,13 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ workouts, userName }) => {
-  const totalVolume = workouts.reduce((acc, w) => acc + (w.totalVolume || 0), 0);
+  const { settings } = useUserSettings();
+  const unit = settings.unit;
+
+  // totalVolume is stored canonically in kg (Phase 1)
+  const totalVolumeKg = workouts.reduce((acc, w) => acc + (w.totalVolume || 0), 0);
+  const totalVolumeDisplay = fromKg(totalVolumeKg, unit);
+
   const totalWorkouts = workouts.length;
   const recentWorkout = workouts[0];
   const firstName = userName ? userName.split(' ')[0] : 'Athlete';
@@ -34,14 +41,16 @@ const Dashboard: React.FC<DashboardProps> = ({ workouts, userName }) => {
           <p className="text-3xl font-bold">{totalWorkouts}</p>
           <p className="text-slate-400 text-sm">Total Workouts</p>
         </div>
+
         <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl">
           <BoltIcon className="w-8 h-8 text-blue-500 mb-4" />
-          <p className="text-3xl font-bold">{(totalVolume / 1000).toFixed(1)}k</p>
-          <p className="text-slate-400 text-sm">Total Volume (kg)</p>
+          <p className="text-3xl font-bold">{(totalVolumeDisplay / 1000).toFixed(1)}k</p>
+          <p className="text-slate-400 text-sm">Total Volume ({unit})</p>
         </div>
+
         <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl">
           <TrophyIcon className="w-8 h-8 text-yellow-500 mb-4" />
-          <p className="text-lg font-bold truncate">{recentWorkout?.exercises[0]?.name || 'N/A'}</p>
+          <p className="text-lg font-bold truncate">{recentWorkout?.exercises?.[0]?.name || 'N/A'}</p>
           <p className="text-slate-400 text-sm">Recent Exercise</p>
         </div>
       </div>
