@@ -17,7 +17,7 @@ import {
   XMarkIcon
 } from '@heroicons/react/24/outline';
 
-const MUSCLE_GROUPS = ['Chest', 'Back', 'Shoulders', 'Arms', 'Legs', 'Core'];
+const MUSCLE_GROUPS = ['Chest', 'Back', 'Shoulders', 'Arms', 'Legs', 'Core', 'Other'];
 
 interface UploaderProps {
   onWorkoutsExtracted: (workouts: Workout[]) => Promise<void>;
@@ -29,6 +29,22 @@ interface FileWithPreview {
 }
 
 type Platform = 'whoop' | 'garmin' | null;
+
+const pickPrimaryMuscleGroup = (ex: any): string => {
+  // If AI provided a distribution array like [{ group: "Chest", factor: 0.7 }, ...]
+  const dists = Array.isArray(ex?.muscleDistributions) ? ex.muscleDistributions : [];
+
+  if (dists.length > 0) {
+    const top = [...dists].sort((a, b) => (b?.factor ?? 0) - (a?.factor ?? 0))[0];
+    if (top?.group) return top.group;
+  }
+
+  // Fall back to any muscleGroup already present
+  if (typeof ex?.muscleGroup === 'string' && ex.muscleGroup.trim()) return ex.muscleGroup;
+
+  return 'Other';
+};
+
 
 const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
   const [selectedPlatform, setSelectedPlatform] = useState<Platform>(null);
@@ -115,7 +131,12 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
   // keep AI-provided date if you want it later, but do NOT prefill UI
   aiDate: w.date ?? w.workoutDate,
   date: "", // <-- blank, user must select
-  exercises: Array.isArray(w.exercises) ? w.exercises : [],
+  exercises: Array.isArray(w.exercises)
+  ? w.exercises.map((ex: any) => ({
+      ...ex,
+      muscleGroup: pickPrimaryMuscleGroup(ex), // ✅ sets default
+    }))
+  : [],
 }))
 // no date filter anymore
 ;
