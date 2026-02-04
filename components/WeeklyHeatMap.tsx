@@ -161,4 +161,15 @@ const WeeklyHeatMap: React.FC<WeeklyHeatMapProps> = ({ workouts }) => {
       <div className="mt-5 flex items-center justify-between text-[10px] uppercase font-black tracking-widest text-slate-600">
         <span>Less</span>
         <div className="flex items-center gap-2">
-          <div className
+          <div className="w-6 h-2 rounded-full bg-slate-800" />
+          <div className="w-6 h-2 rounded-full bg-blue-900" />
+          <div className="w-6 h-2 rounded-full bg-blue-600" />
+          <div className="w-6 h-2 rounded-full bg-orange-500" />
+        </div>
+        <span>More</span>
+      </div>
+    </div>
+  );
+};
+
+export default WeeklyHeatMap;
