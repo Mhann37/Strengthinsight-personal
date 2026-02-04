@@ -1,6 +1,6 @@
 {
-  "name": "Strength Insight",
-  "short_name": "Strength",
+  "name": "StrengthInsight",
+  "short_name": "StrengthInsight",
   "description": "Upload and analyze Whoop Strength Trainer workouts",
   "start_url": "/",
   "display": "standalone",
