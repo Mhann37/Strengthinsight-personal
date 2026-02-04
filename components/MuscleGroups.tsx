@@ -1,5 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Workout, Exercise } from '../types';
+import { useUserSettings } from '../contexts/UserSettingsContext';
+import { fromKg, normalizeUnit, toKg } from '../utils/unit';
 import {
   UserIcon,
   BoltIcon,
@@ -45,11 +47,23 @@ const getMuscleGroup = (ex: Exercise): string => {
   if (name.includes('press')) return 'Shoulders';
 
   // Arms
-  if (name.includes('curl') || name.includes('tricep') || name.includes('bicep') || name.includes('extension') || name.includes('dip'))
+  if (
+    name.includes('curl') ||
+    name.includes('tricep') ||
+    name.includes('bicep') ||
+    name.includes('extension') ||
+    name.includes('dip')
+  )
     return 'Arms';
 
   // Legs
-  if (name.includes('squat') || name.includes('leg') || name.includes('lung') || name.includes('calf') || name.includes('deadlift'))
+  if (
+    name.includes('squat') ||
+    name.includes('leg') ||
+    name.includes('lung') ||
+    name.includes('calf') ||
+    name.includes('deadlift')
+  )
     return 'Legs';
 
   // Core
@@ -79,25 +93,39 @@ const formatWeekLabel = (d: Date) => {
   return d.toLocaleDateString(undefined, { month: 'short', day: '2-digit' });
 };
 
+// canonical kg volume calc for a single exercise (Phase 1)
+const calcExerciseVolumeKg = (ex: Exercise): number => {
+  const sets = Array.isArray((ex as any)?.sets) ? (ex as any).sets : [];
+  return sets.reduce((acc: number, s: any) => {
+    const reps = Number(s?.reps) || 0;
+    const weightKg = toKg(Number(s?.weight) || 0, normalizeUnit(s?.unit));
+    return acc + reps * weightKg;
+  }, 0);
+};
+
 const MuscleGroups: React.FC<{ workouts: Workout[] }> = ({ workouts }) => {
+  const { settings } = useUserSettings();
+  const unit = settings.unit;
+
   const [timeframe, setTimeframe] = useState<7 | 30 | 90>(30);
   const [selectedGroup, setSelectedGroup] = useState<string>('Chest');
 
   const stats = useMemo(() => {
-    const load: Record<string, number> = {};
-    const peaks: Record<string, { name: string; volume: number }> = {};
+    // store everything canonically in kg
+    const loadKg: Record<string, number> = {};
+    const peaksKg: Record<string, { name: string; volumeKg: number }> = {};
 
     MUSCLE_GROUPS.forEach((g) => {
-      load[g] = 0;
-      peaks[g] = { name: 'None', volume: 0 };
+      loadKg[g] = 0;
+      peaksKg[g] = { name: 'None', volumeKg: 0 };
     });
 
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - timeframe);
     cutoff.setHours(0, 0, 0, 0);
 
-    // weekly[weekKey][group] = volume
-    const weekly: Record<string, Record<string, number>> = {};
+    // weeklyKg[weekKey][group] = volumeKg
+    const weeklyKg: Record<string, Record<string, number>> = {};
 
     workouts
       .map((w) => ({ w, d: toDateSafe((w as any).date) }))
@@ -106,53 +134,59 @@ const MuscleGroups: React.FC<{ workouts: Workout[] }> = ({ workouts }) => {
         const weekStart = startOfWeek(d!);
         const weekKey = weekStart.toISOString().slice(0, 10);
 
-        if (!weekly[weekKey]) {
-          weekly[weekKey] = {};
-          MUSCLE_GROUPS.forEach((g) => (weekly[weekKey][g] = 0));
+        if (!weeklyKg[weekKey]) {
+          weeklyKg[weekKey] = {};
+          MUSCLE_GROUPS.forEach((g) => (weeklyKg[weekKey][g] = 0));
         }
 
         (w.exercises || []).forEach((ex: Exercise) => {
           const group = getMuscleGroup(ex);
-          const volume =
-            (ex.sets || []).reduce((acc: number, s: any) => acc + (Number(s.reps) || 0) * (Number(s.weight) || 0), 0) || 0;
+          const volumeKg = calcExerciseVolumeKg(ex);
 
-          load[group] = (load[group] || 0) + volume;
+          loadKg[group] = (loadKg[group] || 0) + volumeKg;
 
           // Peaks only meaningful for main groups (ignore Other)
-          if (group !== 'Other' && volume > (peaks[group]?.volume || 0)) {
-            peaks[group] = { name: ex.name || 'Unknown', volume };
+          if (group !== 'Other' && volumeKg > (peaksKg[group]?.volumeKg || 0)) {
+            peaksKg[group] = { name: ex.name || 'Unknown', volumeKg };
           }
 
-          weekly[weekKey][group] += volume;
+          weeklyKg[weekKey][group] += volumeKg;
         });
       });
 
-    const weeklySeries = Object.keys(weekly)
+    // Build weekly series in DISPLAY units for chart
+    const weeklySeries = Object.keys(weeklyKg)
       .sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
       .map((weekKey) => {
         const label = formatWeekLabel(new Date(weekKey));
-        return { weekKey, label, ...weekly[weekKey] };
+        const row: Record<string, any> = { weekKey, label };
+        MUSCLE_GROUPS.forEach((g) => {
+          row[g] = fromKg(weeklyKg[weekKey][g] || 0, unit);
+        });
+        return row;
       });
 
-    return { load, peaks, weeklySeries };
-  }, [workouts, timeframe]);
+    return { loadKg, peaksKg, weeklySeries };
+  }, [workouts, timeframe, unit]);
 
-  const maxVolume = Math.max(...(Object.values(stats.load) as number[]), 1);
+  const maxVolumeKg = Math.max(...(Object.values(stats.loadKg) as number[]), 1);
 
   const getIntensityColor = (group: string) => {
-    const volume = stats.load[group] || 0;
-    const ratio = volume / maxVolume;
-    if (volume === 0) return 'fill-slate-800';
+    const volumeKg = stats.loadKg[group] || 0;
+    const ratio = volumeKg / maxVolumeKg;
+    if (volumeKg === 0) return 'fill-slate-800';
     if (ratio < 0.3) return 'fill-blue-900';
     if (ratio < 0.6) return 'fill-blue-600';
     return 'fill-orange-500';
   };
 
-  const topMuscle = (Object.entries(stats.load) as [string, number][])
+  const topMuscle = (Object.entries(stats.loadKg) as [string, number][])
     .filter(([g]) => g !== 'Other')
     .sort((a, b) => b[1] - a[1])[0];
 
-  const lowLoadMuscle = MUSCLE_GROUPS.filter((g) => g !== 'Other').find((g) => (stats.load[g] || 0) < maxVolume * 0.2);
+  const lowLoadMuscle = MUSCLE_GROUPS.filter((g) => g !== 'Other').find(
+    (g) => (stats.loadKg[g] || 0) < maxVolumeKg * 0.2
+  );
 
   return (
     <div className="space-y-8 animate-fadeIn pb-20">
@@ -167,7 +201,9 @@ const MuscleGroups: React.FC<{ workouts: Workout[] }> = ({ workouts }) => {
               key={t}
               onClick={() => setTimeframe(t as any)}
               className={`px-5 py-2 rounded-xl text-sm font-bold transition-all ${
-                timeframe === t ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/30' : 'text-slate-500 hover:text-slate-300'
+                timeframe === t
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/30'
+                  : 'text-slate-500 hover:text-slate-300'
               }`}
             >
               {t} Days
@@ -184,7 +220,10 @@ const MuscleGroups: React.FC<{ workouts: Workout[] }> = ({ workouts }) => {
           </h3>
           <div className="relative group">
             <div className="absolute inset-0 bg-blue-500/10 blur-[80px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <svg viewBox="0 0 100 200" className="w-full max-w-[220px] relative z-10 transition-transform duration-500 hover:scale-105">
+            <svg
+              viewBox="0 0 100 200"
+              className="w-full max-w-[220px] relative z-10 transition-transform duration-500 hover:scale-105"
+            >
               <circle cx="50" cy="20" r="14" className="fill-slate-800" />
               {/* Shoulders */}
               <path
@@ -206,11 +245,23 @@ const MuscleGroups: React.FC<{ workouts: Workout[] }> = ({ workouts }) => {
                 className={`${getIntensityColor('Core')} transition-colors duration-700`}
               />
               {/* Arms */}
-              <path d="M20 50 L8 120 L22 55 Z" className={`${getIntensityColor('Arms')} transition-colors duration-700`} />
-              <path d="M80 50 L92 120 L78 55 Z" className={`${getIntensityColor('Arms')} transition-colors duration-700`} />
+              <path
+                d="M20 50 L8 120 L22 55 Z"
+                className={`${getIntensityColor('Arms')} transition-colors duration-700`}
+              />
+              <path
+                d="M80 50 L92 120 L78 55 Z"
+                className={`${getIntensityColor('Arms')} transition-colors duration-700`}
+              />
               {/* Legs */}
-              <path d="M35 135 L22 195 L48 135 Z" className={`${getIntensityColor('Legs')} transition-colors duration-700`} />
-              <path d="M65 135 L78 195 L52 135 Z" className={`${getIntensityColor('Legs')} transition-colors duration-700`} />
+              <path
+                d="M35 135 L22 195 L48 135 Z"
+                className={`${getIntensityColor('Legs')} transition-colors duration-700`}
+              />
+              <path
+                d="M65 135 L78 195 L52 135 Z"
+                className={`${getIntensityColor('Legs')} transition-colors duration-700`}
+              />
             </svg>
           </div>
 
@@ -229,7 +280,7 @@ const MuscleGroups: React.FC<{ workouts: Workout[] }> = ({ workouts }) => {
 
         {/* Detailed Breakdown */}
         <div className="lg:col-span-8 space-y-8">
-          {/* NEW: Muscle Progression */}
+          {/* Muscle Progression */}
           <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] p-8 lg:p-10">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
               <h3 className="text-xl font-bold flex items-center gap-3">
@@ -258,26 +309,29 @@ const MuscleGroups: React.FC<{ workouts: Workout[] }> = ({ workouts }) => {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="label" />
                     <YAxis />
-                    <Tooltip />
+                    <Tooltip formatter={(v: any) => [`${Number(v).toFixed(0)} ${unit}`, selectedGroup]} />
                     <Line type="monotone" dataKey={selectedGroup} strokeWidth={3} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
             )}
 
-            <p className="text-slate-500 text-xs mt-4">Weekly tonnage (reps × weight). Switch muscle group to view trends.</p>
+            <p className="text-slate-500 text-xs mt-4">
+              Weekly volume (reps × weight). Displayed in {unit}. Switch muscle group to view trends.
+            </p>
           </div>
 
-          {/* Tonnage Capacity */}
+          {/* Capacity */}
           <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] p-8 lg:p-10">
             <h3 className="text-xl font-bold mb-8 flex items-center gap-3">
-              <BoltIcon className="w-6 h-6 text-orange-500" /> Tonnage Capacity
+              <BoltIcon className="w-6 h-6 text-orange-500" /> Volume Capacity
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {MUSCLE_GROUPS.filter((g) => g !== 'Other').map((group) => {
-                const volume = stats.load[group] || 0;
-                const peak = stats.peaks[group] || { name: 'None', volume: 0 };
+                const volumeKg = stats.loadKg[group] || 0;
+                const volumeDisplay = fromKg(volumeKg, unit);
+                const peak = stats.peaksKg[group] || { name: 'None', volumeKg: 0 };
 
                 return (
                   <div
@@ -286,10 +340,12 @@ const MuscleGroups: React.FC<{ workouts: Workout[] }> = ({ workouts }) => {
                   >
                     <div className="flex justify-between items-start mb-4">
                       <div>
-                        <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-1">{group}</p>
+                        <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-1">
+                          {group}
+                        </p>
                         <p className="text-3xl font-mono font-bold text-white">
-                          {(volume / 1000).toFixed(2)}
-                          <span className="text-sm opacity-50 ml-1">t</span>
+                          {(volumeDisplay / 1000).toFixed(2)}
+                          <span className="text-sm opacity-50 ml-1">k{unit}</span>
                         </p>
                       </div>
                       <div className="bg-blue-600/10 p-2 rounded-xl">
@@ -300,7 +356,7 @@ const MuscleGroups: React.FC<{ workouts: Workout[] }> = ({ workouts }) => {
                     <div className="w-full bg-slate-800 h-2 rounded-full mb-6 overflow-hidden">
                       <div
                         className="bg-gradient-to-r from-blue-600 to-indigo-500 h-full transition-all duration-1000"
-                        style={{ width: `${(volume / maxVolume) * 100}%` }}
+                        style={{ width: `${(volumeKg / maxVolumeKg) * 100}%` }}
                       ></div>
                     </div>
 
@@ -321,8 +377,9 @@ const MuscleGroups: React.FC<{ workouts: Workout[] }> = ({ workouts }) => {
             <div>
               <h4 className="font-bold text-blue-400 mb-2">Longitudinal Insight</h4>
               <p className="text-slate-400 leading-relaxed">
-                Based on your {timeframe}-day volume, your <strong>{topMuscle?.[0] || 'top muscle group'}</strong> are currently taking the
-                highest load. If you're feeling fatigue, consider prioritizing a "Deload Week" or switching focus to
+                Based on your {timeframe}-day volume, your{' '}
+                <strong>{topMuscle?.[0] || 'top muscle group'}</strong> are currently taking the highest load. If you're
+                feeling fatigue, consider prioritizing a "Deload Week" or switching focus to
                 <strong> {lowLoadMuscle || 'your supporting groups'}</strong> to maintain structural balance.
               </p>
             </div>
