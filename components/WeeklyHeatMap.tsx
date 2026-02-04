@@ -1,133 +1,164 @@
-import React from 'react';
-import { Workout } from '../types';
-import { FireIcon } from '@heroicons/react/24/solid';
-import { parseWorkoutDate, formatYMD } from '../utils/date';
+import React, { useMemo } from "react";
+import { Workout } from "../types";
 
 interface WeeklyHeatMapProps {
   workouts: Workout[];
 }
 
-const WeeklyHeatMap: React.FC<WeeklyHeatMapProps> = ({ workouts }) => {
-  // Create date map for last 7 weeks (49 days)
-  const createDateGrid = () => {
-    const grid: { date: Date; workouts: number; totalVolume: number }[] = [];
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    // Start from 49 days ago
-    const startDate = new Date(today);
-    startDate.setDate(startDate.getDate() - 48);
-
-    // Create 49 days grid
-    for (let i = 0; i < 49; i++) {
-      const date = new Date(startDate);
-      date.setDate(startDate.getDate() + i);
-
-      const dateKey = formatYMD(date); // ✅ local YYYY-MM-DD
-
-      // Count workouts for this date
-      const workoutsOnDate = workouts.filter((workout) => {
-        const wd = parseWorkoutDate(workout.date);
-        if (!wd) return false;
-        return formatYMD(wd) === dateKey;
-      });
-
-      const totalVolume = workoutsOnDate.reduce((acc, w) => acc + (w.totalVolume || 0), 0);
-
-      grid.push({
-        date,
-        workouts: workoutsOnDate.length,
-        totalVolume,
-      });
-    }
-
-    return grid;
-  };
-
-  const dateGrid = createDateGrid();
-  const maxVolume = Math.max(...dateGrid.map((d) => d.totalVolume), 1);
-
-  const getIntensityClass = (volume: number) => {
-    const intensity = volume / maxVolume;
-    if (volume === 0) return 'bg-slate-800';
-    if (intensity < 0.25) return 'bg-blue-600/30';
-    if (intensity < 0.5) return 'bg-blue-600/60';
-    if (intensity < 0.75) return 'bg-blue-500';
-    return 'bg-orange-500';
-  };
-
-  const weeks = [];
-  for (let i = 0; i < 7; i++) {
-    weeks.push(dateGrid.slice(i * 7, (i + 1) * 7));
-  }
-
-  const dayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-
-  return (
-    <div className="bg-slate-900 border border-slate-800 rounded-[2rem] p-8">
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-xl font-bold flex items-center gap-2">
-          <FireIcon className="w-6 h-6 text-orange-500" />
-          Training Heatmap
-        </h3>
-        <div className="text-sm text-slate-400">Last 7 weeks</div>
-      </div>
-
-      <div className="flex gap-2 mb-2">
-        <div className="w-8"></div>
-        {weeks[0]?.map((day, idx) => (
-          <div key={idx} className="w-4 text-center text-xs text-slate-500 font-medium">
-            {dayLabels[day.date.getDay()]}
-          </div>
-        ))}
-      </div>
-
-      <div className="flex flex-col gap-2">
-        {weeks.map((week, weekIdx) => (
-          <div key={weekIdx} className="flex gap-2 items-center">
-            <div className="w-8 text-xs text-slate-500 font-medium">
-              {week[0]?.date.toLocaleDateString('en-AU', { month: 'short' })}
-            </div>
-
-            <div className="flex gap-1">
-              {week.map((day, dayIdx) => (
-                <div
-                  key={dayIdx}
-                  className={`w-4 h-4 rounded-md ${getIntensityClass(day.totalVolume)} hover:ring-2 hover:ring-blue-400/50 transition-all cursor-pointer group relative`}
-                >
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                    <div className="bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs whitespace-nowrap">
-                      <div className="font-medium text-white">
-                        {day.date.toLocaleDateString('en-AU', { weekday: 'short', month: 'short', day: 'numeric' })}
-                      </div>
-                      <div className="text-slate-400">
-                        {day.workouts} workout{day.workouts !== 1 ? 's' : ''}
-                      </div>
-                      <div className="text-slate-400">
-                        {(day.totalVolume / 1000).toFixed(1)}t volume
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="flex items-center justify-between mt-6 text-xs text-slate-500">
-        <span>Less</span>
-        <div className="flex gap-1">
-          <div className="w-3 h-3 rounded bg-slate-800"></div>
-          <div className="w-3 h-3 rounded bg-blue-600/30"></div>
-          <div className="w-3 h-3 rounded bg-blue-600/60"></div>
-          <div className="w-3 h-3 rounded bg-blue-500"></div>
-          <div className="w-3 h-3 rounded bg-orange-500"></div>
-        </div>
-        <span>More</span>
-      </div>
-    </div>
-  );
+const parseLocalDate = (dateStr?: string) => {
+  // Avoid UTC shift bugs from new Date("YYYY-MM-DD")
+  if (!dateStr) return new Date(0);
+  const [y, m, d] = dateStr.split("-").map(Number);
+  if (!y || !m || !d) return new Date(dateStr);
+  return new Date(y, m - 1, d);
 };
 
-export default WeeklyHeatMap;
+const formatDayLabel = (dateStr: string) => {
+  const dt = parseLocalDate(dateStr);
+  const weekday = dt.toLocaleDateString(undefined, { weekday: "short" });
+  const dayMonth = dt.toLocaleDateString(undefined, { day: "2-digit", month: "2-digit" });
+  return `${weekday} ${dayMonth}`;
+};
+
+const getWorkoutTonnage = (w: Workout) =>
+  (w.exercises || []).reduce(
+    (acc, ex) => acc + (ex.sets || []).reduce((sAcc, s) => sAcc + (Number(s.reps) * Number(s.weight || 0)), 0),
+    0
+  );
+
+const getExerciseTonnage = (w: Workout, exerciseName: string) => {
+  const ex = (w.exercises || []).find((e) => (e.name || "").trim().toLowerCase() === exerciseName.trim().toLowerCase());
+  if (!ex) return 0;
+  return (ex.sets || []).reduce((acc, s) => acc + (Number(s.reps) * Number(s.weight || 0)), 0);
+};
+
+const WeeklyHeatMap: React.FC<WeeklyHeatMapProps> = ({ workouts }) => {
+  const model = useMemo(() => {
+    const valid = (workouts || [])
+      .filter((w) => w?.date)
+      .slice()
+      .sort((a, b) => parseLocalDate(b.date).getTime() - parseLocalDate(a.date).getTime());
+
+    // Last 5 sessions only (readability)
+    const lastFive = valid.slice(0, 5).sort((a, b) => parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime());
+
+    // Choose exercises to display (top by tonnage across these 5 sessions)
+    const totalsByExercise: Record<string, number> = {};
+    lastFive.forEach((w) => {
+      (w.exercises || []).forEach((ex) => {
+        const key = (ex.name || "").trim();
+        if (!key) return;
+        const tonnage = (ex.sets || []).reduce(
+          (acc, s) => acc + (Number(s.reps) * Number(s.weight || 0)),
+          0
+        );
+        totalsByExercise[key] = (totalsByExercise[key] || 0) + tonnage;
+      });
+    });
+
+    const exerciseRows = Object.entries(totalsByExercise)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8) // keep compact
+      .map(([name]) => name);
+
+    // For intensity scaling in cells
+    const maxCell = Math.max(
+      1,
+      ...exerciseRows.flatMap((exName) => lastFive.map((w) => getExerciseTonnage(w, exName)))
+    );
+
+    return { lastFive, exerciseRows, maxCell };
+  }, [workouts]);
+
+  if (model.lastFive.length === 0) {
+    return (
+      <div className="bg-slate-950/40 rounded-3xl border border-slate-800/50 p-8 text-center text-slate-500">
+        Log some sessions to generate your Weekly Performance Matrix.
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-slate-950/40 rounded-3xl border border-slate-800/50 p-6 md:p-8">
+      <div className="flex items-center justify-between mb-5">
+        <div>
+          <h3 className="text-lg font-bold text-slate-100">Weekly Performance Matrix</h3>
+          <p className="text-xs text-slate-500 mt-1">Last 5 sessions • exercises + tonnage for quick readability</p>
+        </div>
+        <div className="text-xs text-slate-500">
+          {model.lastFive.length} sessions
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <div className="min-w-[680px]">
+          {/* Header row */}
+          <div className="grid grid-cols-[240px_repeat(5,minmax(88px,1fr))] gap-2 mb-2 px-2">
+            <div className="text-[10px] uppercase font-black tracking-widest text-slate-600">Exercise</div>
+            {model.lastFive.map((w) => (
+              <div key={w.id || w.date} className="text-[10px] uppercase font-black tracking-widest text-slate-600 text-center">
+                {formatDayLabel(w.date)}
+              </div>
+            ))}
+          </div>
+
+          {/* Body */}
+          <div className="space-y-2">
+            {model.exerciseRows.map((exName) => (
+              <div
+                key={exName}
+                className="grid grid-cols-[240px_repeat(5,minmax(88px,1fr))] gap-2 items-center bg-slate-900/30 border border-slate-800/40 rounded-2xl px-2 py-2"
+              >
+                <div className="text-sm font-bold text-slate-200 truncate pr-2" title={exName}>
+                  {exName}
+                </div>
+
+                {model.lastFive.map((w) => {
+                  const v = getExerciseTonnage(w, exName);
+                  const ratio = Math.min(1, v / model.maxCell);
+
+                  // color: none -> slate, low -> blue, high -> orange
+                  const color =
+                    v === 0 ? "bg-slate-800/70" :
+                    ratio < 0.35 ? "bg-blue-900" :
+                    ratio < 0.7 ? "bg-blue-600" :
+                    "bg-orange-500";
+
+                  return (
+                    <div key={(w.id || w.date) + exName} className="flex items-center justify-center">
+                      <div
+                        title={
+                          v > 0
+                            ? `${exName}\n${w.date}\n${(v / 1000).toFixed(2)}t (${Math.round(v).toLocaleString()}kg)`
+                            : `${exName}\n${w.date}\nNot performed`
+                        }
+                        className={`w-full h-9 rounded-xl border border-slate-800/60 ${v === 0 ? "" : "shadow-[0_0_30px_rgba(59,130,246,0.15)]"} flex items-center justify-center`}
+                      >
+                        <div className={`h-3.5 rounded-full ${color}`} style={{ width: `${Math.max(10, ratio * 92)}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+
+          {/* Footer mini-summary */}
+          <div className="mt-5 grid grid-cols-[240px_repeat(5,minmax(88px,1fr))] gap-2 px-2">
+            <div className="text-[10px] uppercase font-black tracking-widest text-slate-600">Session tonnage</div>
+            {model.lastFive.map((w) => {
+              const t = getWorkoutTonnage(w);
+              return (
+                <div key={(w.id || w.date) + "_ton"} className="text-xs text-slate-400 text-center font-mono">
+                  {(t / 1000).toFixed(2)}t
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-5 flex items-center justify-between text-[10px] uppercase font-black tracking-widest text-slate-600">
+        <span>Less</span>
+        <div className="flex items-center gap-2">
+          <div className
