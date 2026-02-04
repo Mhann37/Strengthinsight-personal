@@ -282,6 +282,16 @@ const App: React.FC = () => {
             </>
           )}
         </div>
+        <footer className="mt-16 pb-6 text-center text-xs text-slate-500">
+  <a
+    href="/privacy"
+    target="_blank"
+    rel="noopener noreferrer"
+    className="hover:text-blue-400 transition-colors"
+  >
+    Privacy Policy
+  </a>
+</footer>
       </main>
       {isSidebarOpen && <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden" onClick={() => setIsSidebarOpen(false)} />}
     </div>
