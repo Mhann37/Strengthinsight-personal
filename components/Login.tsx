@@ -85,6 +85,19 @@ const Login: React.FC = () => {
               {error}
             </div>
           )}
+          <div className="pt-4 text-center text-xs text-slate-500">
+  <p>
+    By continuing, you agree to our{" "}
+    <a
+      href="/privacy.html"
+      target="_blank"
+      rel="noopener noreferrer"
+      className="underline hover:text-blue-400 transition-colors"
+    >
+      Privacy Policy
+    </a>
+  </p>
+</div>
         </div>
       </div>
     </div>
