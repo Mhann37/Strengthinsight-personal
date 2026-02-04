@@ -1,129 +1,130 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React from 'react';
 import { Workout } from '../types';
-import { MagnifyingGlassPlusIcon, MagnifyingGlassMinusIcon } from '@heroicons/react/24/outline';
+import { FireIcon } from '@heroicons/react/24/solid';
+import { parseWorkoutDate, formatYMD } from '../utils/date';
 
 interface WeeklyHeatMapProps {
   workouts: Workout[];
 }
 
 const WeeklyHeatMap: React.FC<WeeklyHeatMapProps> = ({ workouts }) => {
-  const [isZoomed, setIsZoomed] = useState(false);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  // Create date map for last 7 weeks (49 days)
+  const createDateGrid = () => {
+    const grid: { date: Date; workouts: number; totalVolume: number }[] = [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-  // Get the last 5 days
-  const today = new Date();
-  const days = Array.from({ length: 5 }, (_, i) => {
-    const d = new Date();
-    d.setDate(today.getDate() - (4 - i));
-    return d;
-  });
+    // Start from 49 days ago
+    const startDate = new Date(today);
+    startDate.setDate(startDate.getDate() - 48);
 
-  // Auto-scroll to the end (today) on mount for better mobile UX
-  useEffect(() => {
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollLeft = scrollContainerRef.current.scrollWidth;
+    // Create 49 days grid
+    for (let i = 0; i < 49; i++) {
+      const date = new Date(startDate);
+      date.setDate(startDate.getDate() + i);
+
+      const dateKey = formatYMD(date); // ✅ local YYYY-MM-DD
+
+      // Count workouts for this date
+      const workoutsOnDate = workouts.filter((workout) => {
+        const wd = parseWorkoutDate(workout.date);
+        if (!wd) return false;
+        return formatYMD(wd) === dateKey;
+      });
+
+      const totalVolume = workoutsOnDate.reduce((acc, w) => acc + (w.totalVolume || 0), 0);
+
+      grid.push({
+        date,
+        workouts: workoutsOnDate.length,
+        totalVolume,
+      });
     }
-  }, []);
 
-  // Group exercises by day
-  const exerciseByDay: Record<string, string[]> = {};
-  
-  days.forEach(day => {
-    const dayStr = day.toISOString().split('T')[0];
-    exerciseByDay[dayStr] = [];
-    
-    // Find all workouts on this day
-    workouts.forEach(workout => {
-      if (!workout.date) return;
-      const workoutDayStr = workout.date.split('T')[0];
-      if (workoutDayStr === dayStr) {
-        workout.exercises.forEach(ex => {
-          if (!exerciseByDay[dayStr].includes(ex.name)) {
-            exerciseByDay[dayStr].push(ex.name);
-          }
-        });
-      }
-    });
-  });
-
-  const getDayName = (date: Date) => {
-    return date.toLocaleDateString(undefined, { weekday: 'short' });
+    return grid;
   };
 
-  const getDayNum = (date: Date) => {
-    return date.getDate();
+  const dateGrid = createDateGrid();
+  const maxVolume = Math.max(...dateGrid.map((d) => d.totalVolume), 1);
+
+  const getIntensityClass = (volume: number) => {
+    const intensity = volume / maxVolume;
+    if (volume === 0) return 'bg-slate-800';
+    if (intensity < 0.25) return 'bg-blue-600/30';
+    if (intensity < 0.5) return 'bg-blue-600/60';
+    if (intensity < 0.75) return 'bg-blue-500';
+    return 'bg-orange-500';
   };
+
+  const weeks = [];
+  for (let i = 0; i < 7; i++) {
+    weeks.push(dateGrid.slice(i * 7, (i + 1) * 7));
+  }
+
+  const dayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
   return (
-    <div className="relative">
-      {/* Zoom Toggle */}
-      <div className="flex justify-end mb-3">
-        <button
-          onClick={() => setIsZoomed(!isZoomed)}
-          className="flex items-center space-x-1.5 px-3 py-1.5 bg-slate-800/80 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-medium text-slate-300 transition-colors"
-        >
-          {isZoomed ? (
-            <>
-              <MagnifyingGlassMinusIcon className="w-3.5 h-3.5" />
-              <span>Zoom Out</span>
-            </>
-          ) : (
-            <>
-              <MagnifyingGlassPlusIcon className="w-3.5 h-3.5" />
-              <span>Zoom In</span>
-            </>
-          )}
-        </button>
+    <div className="bg-slate-900 border border-slate-800 rounded-[2rem] p-8">
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-xl font-bold flex items-center gap-2">
+          <FireIcon className="w-6 h-6 text-orange-500" />
+          Training Heatmap
+        </h3>
+        <div className="text-sm text-slate-400">Last 7 weeks</div>
       </div>
 
-      {/* Heatmap Container */}
-      <div 
-        ref={scrollContainerRef}
-        className="flex space-x-2 overflow-x-auto pb-4 snap-x scroll-smooth scrollbar-hide touch-pan-x"
-      >
-        {days.map(day => {
-          const dayKey = day.toISOString().split('T')[0];
-          const exercises = exerciseByDay[dayKey];
-          const isToday = dayKey === today.toISOString().split('T')[0];
+      <div className="flex gap-2 mb-2">
+        <div className="w-8"></div>
+        {weeks[0]?.map((day, idx) => (
+          <div key={idx} className="w-4 text-center text-xs text-slate-500 font-medium">
+            {dayLabels[day.date.getDay()]}
+          </div>
+        ))}
+      </div>
 
-          return (
-            <div 
-              key={dayKey} 
-              className={`
-                ${isZoomed ? 'min-w-[120px]' : 'min-w-[55px] flex-1'} 
-                shrink-0 flex flex-col space-y-2 snap-center last:mr-0 transition-all duration-300 ease-in-out
-              `}
-            >
-              <div className={`text-center py-2 rounded-xl border transition-all duration-300 ${isToday ? 'bg-blue-600 border-blue-500 shadow-lg shadow-blue-900/40' : 'bg-slate-800 border-slate-700'}`}>
-                <p className={`${isZoomed ? 'text-xs' : 'text-[9px]'} font-bold uppercase tracking-wider ${isToday ? 'text-white' : 'text-slate-400'}`}>{getDayName(day)}</p>
-                <p className={`${isZoomed ? 'text-2xl' : 'text-lg'} font-bold leading-none mt-0.5`}>{getDayNum(day)}</p>
-              </div>
-              
-              <div className="flex-1 space-y-1.5 min-h-[200px]">
-                {exercises && exercises.length > 0 ? (
-                  exercises.map((name, idx) => (
-                    <div 
-                      key={idx} 
-                      className={`
-                        ${isZoomed ? 'p-2 text-xs' : 'p-1 text-[9px] leading-3'} 
-                        bg-blue-500/10 border border-blue-500/20 rounded-lg 
-                        font-medium text-blue-300 text-center break-words 
-                        hover:bg-blue-500/20 transition-all duration-300
-                      `}
-                      title={name}
-                    >
-                      {name}
-                    </div>
-                  ))
-                ) : (
-                  <div className="h-full border-2 border-dashed border-slate-800/50 rounded-xl flex items-center justify-center opacity-30">
-                    <div className="w-1 h-1 bg-slate-700 rounded-full"></div>
-                  </div>
-                )}
-              </div>
+      <div className="flex flex-col gap-2">
+        {weeks.map((week, weekIdx) => (
+          <div key={weekIdx} className="flex gap-2 items-center">
+            <div className="w-8 text-xs text-slate-500 font-medium">
+              {week[0]?.date.toLocaleDateString('en-AU', { month: 'short' })}
             </div>
-          );
-        })}
+
+            <div className="flex gap-1">
+              {week.map((day, dayIdx) => (
+                <div
+                  key={dayIdx}
+                  className={`w-4 h-4 rounded-md ${getIntensityClass(day.totalVolume)} hover:ring-2 hover:ring-blue-400/50 transition-all cursor-pointer group relative`}
+                >
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                    <div className="bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs whitespace-nowrap">
+                      <div className="font-medium text-white">
+                        {day.date.toLocaleDateString('en-AU', { weekday: 'short', month: 'short', day: 'numeric' })}
+                      </div>
+                      <div className="text-slate-400">
+                        {day.workouts} workout{day.workouts !== 1 ? 's' : ''}
+                      </div>
+                      <div className="text-slate-400">
+                        {(day.totalVolume / 1000).toFixed(1)}t volume
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex items-center justify-between mt-6 text-xs text-slate-500">
+        <span>Less</span>
+        <div className="flex gap-1">
+          <div className="w-3 h-3 rounded bg-slate-800"></div>
+          <div className="w-3 h-3 rounded bg-blue-600/30"></div>
+          <div className="w-3 h-3 rounded bg-blue-600/60"></div>
+          <div className="w-3 h-3 rounded bg-blue-500"></div>
+          <div className="w-3 h-3 rounded bg-orange-500"></div>
+        </div>
+        <span>More</span>
       </div>
     </div>
   );
