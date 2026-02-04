@@ -19,11 +19,14 @@ const {
   getFirestore,
   collection,
   addDoc,
+  getDoc,
+  setDoc,
   query,
   where,
   deleteDoc,
   doc,
-  onSnapshot
+  onSnapshot,
+  serverTimestamp,
 } = firestoreModule as any;
 
 const getEnv = (key: string): string | undefined => {
@@ -94,11 +97,14 @@ export {
   signOut,
   collection,
   addDoc,
+  getDoc,
+  setDoc,
   query,
   where,
   deleteDoc, 
   doc, 
   onSnapshot,
+  serverTimestamp,
   httpsCallable,
   getRedirectResult
 };
