@@ -16,32 +16,53 @@ import {
   Tooltip,
   CartesianGrid,
 } from 'recharts';
-import { parseWorkoutDate, formatYMD } from '../utils/date';
 
 // Include Other because our fallback categorizer can return it.
 const MUSCLE_GROUPS = ['Chest', 'Back', 'Shoulders', 'Arms', 'Legs', 'Core', 'Other'];
 
 /**
  * Smart Fallback Categorizer for legacy or missing data
+ * NOTE: This is a heuristic fallback. Once your uploader consistently sets muscleGroup,
+ * this should be used rarely.
  */
 const getMuscleGroup = (ex: Exercise): string => {
   if (ex.muscleGroup && MUSCLE_GROUPS.includes(ex.muscleGroup)) return ex.muscleGroup;
 
   const name = (ex.name || '').toLowerCase();
 
-  if (name.includes('bench') || name.includes('chest') || name.includes('fly') || name.includes('pushup')) return 'Chest';
-  if (name.includes('row') || name.includes('pull') || name.includes('lat') || name.includes('chin')) return 'Back';
+  // Chest
+  if (name.includes('bench') || name.includes('chest') || name.includes('fly') || name.includes('pushup'))
+    return 'Chest';
 
-  if (name.includes('shoulder') || name.includes('lateral') || name.includes('deltoid')) return 'Shoulders';
+  // Back
+  if (name.includes('row') || name.includes('pull') || name.includes('lat') || name.includes('chin'))
+    return 'Back';
+
+  // Shoulders
+  if (name.includes('shoulder') || name.includes('lateral') || name.includes('deltoid'))
+    return 'Shoulders';
+  // Keep "press" here, but after chest/back checks to avoid bench press misclassifying.
   if (name.includes('press')) return 'Shoulders';
 
-  if (name.includes('curl') || name.includes('tricep') || name.includes('bicep') || name.includes('extension') || name.includes('dip')) return 'Arms';
+  // Arms
+  if (name.includes('curl') || name.includes('tricep') || name.includes('bicep') || name.includes('extension') || name.includes('dip'))
+    return 'Arms';
 
-  if (name.includes('squat') || name.includes('leg') || name.includes('lung') || name.includes('calf') || name.includes('deadlift')) return 'Legs';
+  // Legs
+  if (name.includes('squat') || name.includes('leg') || name.includes('lung') || name.includes('calf') || name.includes('deadlift'))
+    return 'Legs';
 
-  if (name.includes('plank') || name.includes('crunch') || name.includes('abs') || name.includes('core')) return 'Core';
+  // Core
+  if (name.includes('plank') || name.includes('crunch') || name.includes('abs') || name.includes('core'))
+    return 'Core';
 
   return 'Other';
+};
+
+const toDateSafe = (value?: string) => {
+  if (!value) return null;
+  const d = new Date(value);
+  return isNaN(d.getTime()) ? null : d;
 };
 
 const startOfWeek = (d: Date) => {
@@ -77,16 +98,13 @@ const MuscleGroups: React.FC<{ workouts: Workout[] }> = ({ workouts }) => {
 
     // weekly[weekKey][group] = volume
     const weekly: Record<string, Record<string, number>> = {};
-    const weekKeyToDate: Record<string, Date> = {};
 
     workouts
-      .map((w) => ({ w, d: parseWorkoutDate((w as any).date) }))
+      .map((w) => ({ w, d: toDateSafe((w as any).date) }))
       .filter(({ d }) => d && d.getTime() >= cutoff.getTime())
       .forEach(({ w, d }) => {
         const weekStart = startOfWeek(d!);
-        const weekKey = formatYMD(weekStart); // ✅ local week key
-
-        weekKeyToDate[weekKey] = weekStart;
+        const weekKey = weekStart.toISOString().slice(0, 10);
 
         if (!weekly[weekKey]) {
           weekly[weekKey] = {};
@@ -96,13 +114,11 @@ const MuscleGroups: React.FC<{ workouts: Workout[] }> = ({ workouts }) => {
         (w.exercises || []).forEach((ex: Exercise) => {
           const group = getMuscleGroup(ex);
           const volume =
-            (ex.sets || []).reduce(
-              (acc: number, s: any) => acc + (Number(s.reps) || 0) * (Number(s.weight) || 0),
-              0
-            ) || 0;
+            (ex.sets || []).reduce((acc: number, s: any) => acc + (Number(s.reps) || 0) * (Number(s.weight) || 0), 0) || 0;
 
           load[group] = (load[group] || 0) + volume;
 
+          // Peaks only meaningful for main groups (ignore Other)
           if (group !== 'Other' && volume > (peaks[group]?.volume || 0)) {
             peaks[group] = { name: ex.name || 'Unknown', volume };
           }
@@ -112,10 +128,9 @@ const MuscleGroups: React.FC<{ workouts: Workout[] }> = ({ workouts }) => {
       });
 
     const weeklySeries = Object.keys(weekly)
-      .sort((a, b) => (weekKeyToDate[a]?.getTime() || 0) - (weekKeyToDate[b]?.getTime() || 0))
+      .sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
       .map((weekKey) => {
-        const weekStart = weekKeyToDate[weekKey] || parseWorkoutDate(weekKey) || new Date();
-        const label = formatWeekLabel(weekStart);
+        const label = formatWeekLabel(new Date(weekKey));
         return { weekKey, label, ...weekly[weekKey] };
       });
 
@@ -171,11 +186,29 @@ const MuscleGroups: React.FC<{ workouts: Workout[] }> = ({ workouts }) => {
             <div className="absolute inset-0 bg-blue-500/10 blur-[80px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
             <svg viewBox="0 0 100 200" className="w-full max-w-[220px] relative z-10 transition-transform duration-500 hover:scale-105">
               <circle cx="50" cy="20" r="14" className="fill-slate-800" />
-              <path d="M25 45 Q50 35 75 45 L75 55 Q50 45 25 55 Z" className={`${getIntensityColor('Shoulders')} transition-colors duration-700`} />
-              <path d="M30 55 Q50 50 70 55 L70 85 Q50 90 30 85 Z" className={`${getIntensityColor('Chest')} transition-colors duration-700`} />
-              <rect x="35" y="90" width="30" height="40" rx="4" className={`${getIntensityColor('Core')} transition-colors duration-700`} />
+              {/* Shoulders */}
+              <path
+                d="M25 45 Q50 35 75 45 L75 55 Q50 45 25 55 Z"
+                className={`${getIntensityColor('Shoulders')} transition-colors duration-700`}
+              />
+              {/* Chest */}
+              <path
+                d="M30 55 Q50 50 70 55 L70 85 Q50 90 30 85 Z"
+                className={`${getIntensityColor('Chest')} transition-colors duration-700`}
+              />
+              {/* Core */}
+              <rect
+                x="35"
+                y="90"
+                width="30"
+                height="40"
+                rx="4"
+                className={`${getIntensityColor('Core')} transition-colors duration-700`}
+              />
+              {/* Arms */}
               <path d="M20 50 L8 120 L22 55 Z" className={`${getIntensityColor('Arms')} transition-colors duration-700`} />
               <path d="M80 50 L92 120 L78 55 Z" className={`${getIntensityColor('Arms')} transition-colors duration-700`} />
+              {/* Legs */}
               <path d="M35 135 L22 195 L48 135 Z" className={`${getIntensityColor('Legs')} transition-colors duration-700`} />
               <path d="M65 135 L78 195 L52 135 Z" className={`${getIntensityColor('Legs')} transition-colors duration-700`} />
             </svg>
@@ -194,8 +227,9 @@ const MuscleGroups: React.FC<{ workouts: Workout[] }> = ({ workouts }) => {
           </div>
         </div>
 
+        {/* Detailed Breakdown */}
         <div className="lg:col-span-8 space-y-8">
-          {/* Muscle Progression */}
+          {/* NEW: Muscle Progression */}
           <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] p-8 lg:p-10">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
               <h3 className="text-xl font-bold flex items-center gap-3">
@@ -208,7 +242,9 @@ const MuscleGroups: React.FC<{ workouts: Workout[] }> = ({ workouts }) => {
                 className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm font-bold text-blue-400 outline-none focus:border-blue-500"
               >
                 {MUSCLE_GROUPS.filter((g) => g !== 'Other').map((g) => (
-                  <option key={g} value={g}>{g}</option>
+                  <option key={g} value={g}>
+                    {g}
+                  </option>
                 ))}
               </select>
             </div>
@@ -244,7 +280,10 @@ const MuscleGroups: React.FC<{ workouts: Workout[] }> = ({ workouts }) => {
                 const peak = stats.peaks[group] || { name: 'None', volume: 0 };
 
                 return (
-                  <div key={group} className="bg-slate-950/50 p-6 rounded-[2rem] border border-slate-800/50 transition-all hover:border-blue-500/30">
+                  <div
+                    key={group}
+                    className="bg-slate-950/50 p-6 rounded-[2rem] border border-slate-800/50 transition-all hover:border-blue-500/30"
+                  >
                     <div className="flex justify-between items-start mb-4">
                       <div>
                         <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-1">{group}</p>
@@ -262,7 +301,7 @@ const MuscleGroups: React.FC<{ workouts: Workout[] }> = ({ workouts }) => {
                       <div
                         className="bg-gradient-to-r from-blue-600 to-indigo-500 h-full transition-all duration-1000"
                         style={{ width: `${(volume / maxVolume) * 100}%` }}
-                      />
+                      ></div>
                     </div>
 
                     <div className="flex items-center gap-3 text-xs text-slate-400">
