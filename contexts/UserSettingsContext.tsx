@@ -3,9 +3,7 @@ import { db, doc, onSnapshot, setDoc, serverTimestamp } from '../firebase';
 import type { Unit } from '../utils/unit';
 import { inferDefaultUnitFromBrowser } from '../utils/unit';
 
-type UserSettings = {
-  unit: Unit;
-};
+type UserSettings = { unit: Unit };
 
 type Ctx = {
   settings: UserSettings;
@@ -17,11 +15,11 @@ const UserSettingsContext = createContext<Ctx | null>(null);
 
 export const useUserSettings = (): Ctx => {
   const ctx = useContext(UserSettingsContext);
-  if (!ctx) {
-    throw new Error('useUserSettings must be used within <UserSettingsProvider />');
-  }
+  if (!ctx) throw new Error('useUserSettings must be used within <UserSettingsProvider />');
   return ctx;
 };
+
+const isUnit = (x: any): x is Unit => x === 'kg' || x === 'lbs';
 
 export const UserSettingsProvider: React.FC<{ userId: string; children: React.ReactNode }> = ({
   userId,
@@ -33,41 +31,60 @@ export const UserSettingsProvider: React.FC<{ userId: string; children: React.Re
   useEffect(() => {
     if (!userId) return;
 
+    const storageKey = `strengthinsight:unit:${userId}`;
+    const fromStorage = (): Unit | null => {
+      try {
+        const v = localStorage.getItem(storageKey);
+        return isUnit(v) ? v : null;
+      } catch {
+        return null;
+      }
+    };
+    const saveStorage = (u: Unit) => {
+      try {
+        localStorage.setItem(storageKey, u);
+      } catch {}
+    };
+
     const ref = doc(db, 'userSettings', userId);
+
     const unsubscribe = onSnapshot(
       ref,
       async (snap: any) => {
         const data = snap?.data?.();
 
-        // First run: if no doc yet, create it with a sensible default
+        // If doc missing, create it with best-available default (storage > browser infer)
         if (!snap?.exists?.()) {
-          const guessed = inferDefaultUnitFromBrowser();
+          const guessed = fromStorage() ?? inferDefaultUnitFromBrowser();
           setUnitState(guessed);
+          saveStorage(guessed);
+
           try {
             await setDoc(
               ref,
-              {
-                unit: guessed,
-                createdAt: serverTimestamp(),
-                updatedAt: serverTimestamp(),
-              },
+              { unit: guessed, createdAt: serverTimestamp(), updatedAt: serverTimestamp() },
               { merge: true }
             );
           } catch (e) {
-            // If Firestore write fails, keep local default and continue.
+            // Firestore write failed; we still keep local storage + state.
             console.warn('Unable to create userSettings doc:', e);
           }
+
           setIsLoading(false);
           return;
         }
 
         const nextUnit: Unit = data?.unit === 'lbs' ? 'lbs' : 'kg';
         setUnitState(nextUnit);
+        saveStorage(nextUnit);
         setIsLoading(false);
       },
       (err: any) => {
         console.warn('User settings subscription error:', err);
-        setUnitState(inferDefaultUnitFromBrowser());
+
+        // If Firestore read fails, prefer localStorage; else browser infer.
+        const fallback = fromStorage() ?? inferDefaultUnitFromBrowser();
+        setUnitState(fallback);
         setIsLoading(false);
       }
     );
@@ -76,26 +93,19 @@ export const UserSettingsProvider: React.FC<{ userId: string; children: React.Re
   }, [userId]);
 
   const setUnit = async (next: Unit) => {
+    const storageKey = `strengthinsight:unit:${userId}`;
+    try {
+      localStorage.setItem(storageKey, next);
+    } catch {}
+
     const ref = doc(db, 'userSettings', userId);
     setUnitState(next);
-    await setDoc(
-      ref,
-      {
-        unit: next,
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true }
-    );
+
+    // Best effort Firestore write
+    await setDoc(ref, { unit: next, updatedAt: serverTimestamp() }, { merge: true });
   };
 
-  const value = useMemo<Ctx>(
-    () => ({
-      settings: { unit },
-      setUnit,
-      isLoading,
-    }),
-    [unit, isLoading]
-  );
+  const value = useMemo<Ctx>(() => ({ settings: { unit }, setUnit, isLoading }), [unit, isLoading]);
 
   return <UserSettingsContext.Provider value={value}>{children}</UserSettingsContext.Provider>;
 };
