@@ -681,24 +681,7 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
         </div>
       </header>
 
-      {/* Example screenshot (C) */}
-      <section className="bg-slate-900 border border-slate-800 rounded-3xl p-6 lg:p-8">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-bold text-slate-200">Example WHOOP Strength Trainer summary</h2>
-            <p className="text-slate-500 text-sm">This is the type of screenshot StrengthInsight reads.</p>
-          </div>
-        </div>
-
-        <div className="mt-5 rounded-2xl overflow-hidden border border-slate-800 bg-slate-950/40">
-          <img
-            src="/examples/whoop-strength-summary.jpg"
-            alt="Example WHOOP Strength Trainer exercise summary screenshot"
-          className="max-h-64 w-auto object-contain mx-auto rounded-xl border border-slate-800 bg-slate-950/40 p-3 opacity-90"
-            loading="lazy"
-          />
-        </div>
-      </section>
+     
 
       <div
         onClick={() => !isProcessing && fileInputRef.current?.click()}
@@ -782,6 +765,25 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
         )}
       </button>
 
+       {/* Example screenshot (C) */}
+      <section className="bg-slate-900 border border-slate-800 rounded-3xl p-6 lg:p-8">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-bold text-slate-200">Example WHOOP Strength Trainer summary</h2>
+            <p className="text-slate-500 text-sm">This is the type of screenshot StrengthInsight reads.</p>
+          </div>
+        </div>
+
+        <div className="mt-5 rounded-2xl overflow-hidden border border-slate-800 bg-slate-950/40">
+          <img
+            src="/examples/whoop-strength-summary.jpg"
+            alt="Example WHOOP Strength Trainer exercise summary screenshot"
+          className="max-h-[40rem] w-auto object-contain mx-auto rounded-xl border border-slate-800 bg-slate-950/40 p-3 opacity-90"
+            loading="lazy"
+          />
+        </div>
+      </section>
+      
       <style>{`
         @keyframes shake {
           0%, 100% { transform: translateX(-50%) rotate(0deg); }
