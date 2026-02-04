@@ -1,12 +1,13 @@
-
 import React, { useMemo } from 'react';
 import { Workout } from '../types';
-import { 
-  ArrowTrendingUpIcon, 
+import { useUserSettings } from '../contexts/UserSettingsContext';
+import { calcWorkoutVolumeKg, fromKg, normalizeUnit, toKg } from '../utils/unit';
+import {
+  ArrowTrendingUpIcon,
   ArrowTrendingDownIcon,
-  SparklesIcon, 
-  ScaleIcon, 
-  TrophyIcon 
+  SparklesIcon,
+  ScaleIcon,
+  TrophyIcon,
 } from '@heroicons/react/24/outline';
 
 interface InsightsPanelProps {
@@ -14,6 +15,9 @@ interface InsightsPanelProps {
 }
 
 const InsightsPanel: React.FC<InsightsPanelProps> = ({ workouts }) => {
+  const { settings } = useUserSettings();
+  const unit = settings.unit;
+
   const insights = useMemo(() => {
     if (workouts.length === 0) return null;
 
@@ -22,12 +26,12 @@ const InsightsPanel: React.FC<InsightsPanelProps> = ({ workouts }) => {
     const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-    // 1. Weekly Volume Trend
-    let thisWeekVol = 0;
-    let lastWeekVol = 0;
-    
-    // 2. Heaviest Lift
-    let maxWeight = 0;
+    // 1. Weekly Volume Trend (canonical kg)
+    let thisWeekVolKg = 0;
+    let lastWeekVolKg = 0;
+
+    // 2. Heaviest Lift (canonical kg)
+    let maxWeightKg = 0;
     let maxWeightName = '-';
 
     // 3. Most Frequent Exercise
@@ -36,34 +40,38 @@ const InsightsPanel: React.FC<InsightsPanelProps> = ({ workouts }) => {
     // 4. Monthly Reps
     let monthlyReps = 0;
 
-    workouts.forEach(w => {
+    workouts.forEach((w) => {
       const d = new Date(w.date);
-      
-      // Volume Trend
+
+      // Volume Trend: prefer stored totalVolume (kg), otherwise compute safely
+      const workoutVolKg =
+        typeof (w as any).totalVolume === 'number' ? (w as any).totalVolume : calcWorkoutVolumeKg(w);
+
       if (d >= oneWeekAgo) {
-        thisWeekVol += w.totalVolume;
+        thisWeekVolKg += workoutVolKg;
       } else if (d >= twoWeeksAgo && d < oneWeekAgo) {
-        lastWeekVol += w.totalVolume;
+        lastWeekVolKg += workoutVolKg;
       }
 
       // Monthly Reps
       if (d >= thirtyDaysAgo) {
-        w.exercises.forEach(ex => {
-          ex.sets.forEach(s => {
-            monthlyReps += s.reps;
+        w.exercises.forEach((ex) => {
+          ex.sets.forEach((s) => {
+            monthlyReps += Number((s as any).reps) || 0;
           });
         });
       }
 
       // Heaviest Lift & Frequency (All time analysis)
-      w.exercises.forEach(ex => {
+      w.exercises.forEach((ex) => {
         // Frequency
         exerciseCounts[ex.name] = (exerciseCounts[ex.name] || 0) + 1;
 
-        // Max Weight
-        ex.sets.forEach(s => {
-          if (s.weight > maxWeight) {
-            maxWeight = s.weight;
+        // Max Weight: compare in kg so mixed units don't lie
+        ex.sets.forEach((s: any) => {
+          const candidateKg = toKg(Number(s?.weight) || 0, normalizeUnit(s?.unit));
+          if (candidateKg > maxWeightKg) {
+            maxWeightKg = candidateKg;
             maxWeightName = ex.name;
           }
         });
@@ -72,9 +80,9 @@ const InsightsPanel: React.FC<InsightsPanelProps> = ({ workouts }) => {
 
     // Calculate Trend Percentage
     let trendPercent = 0;
-    if (lastWeekVol > 0) {
-      trendPercent = Math.round(((thisWeekVol - lastWeekVol) / lastWeekVol) * 100);
-    } else if (thisWeekVol > 0) {
+    if (lastWeekVolKg > 0) {
+      trendPercent = Math.round(((thisWeekVolKg - lastWeekVolKg) / lastWeekVolKg) * 100);
+    } else if (thisWeekVolKg > 0) {
       trendPercent = 100; // Treated as 100% increase if starting from 0
     }
 
@@ -91,22 +99,25 @@ const InsightsPanel: React.FC<InsightsPanelProps> = ({ workouts }) => {
     return {
       trend: {
         value: trendPercent,
-        current: thisWeekVol,
-        isPositive: trendPercent >= 0
+        currentKg: thisWeekVolKg,
+        isPositive: trendPercent >= 0,
       },
       heaviest: {
-        weight: maxWeight,
-        name: maxWeightName
+        weightKg: maxWeightKg,
+        name: maxWeightName,
       },
       favorite: {
         name: favoriteExercise,
-        count: maxCount
+        count: maxCount,
       },
-      reps: monthlyReps
+      reps: monthlyReps,
     };
   }, [workouts]);
 
   if (!insights) return null;
+
+  const weeklyMovedDisplay = fromKg(insights.trend.currentKg, unit);
+  const heaviestDisplay = fromKg(insights.heaviest.weightKg, unit);
 
   return (
     <section>
@@ -114,19 +125,34 @@ const InsightsPanel: React.FC<InsightsPanelProps> = ({ workouts }) => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Card 1: Volume Trend */}
         <div className="bg-slate-900 border border-slate-800 p-6 rounded-[2rem] aspect-square flex flex-col justify-between relative overflow-hidden group hover:border-blue-500/30 transition-all">
-          <div className={`absolute top-0 right-0 p-32 blur-3xl opacity-10 rounded-full ${insights.trend.isPositive ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
+          <div
+            className={`absolute top-0 right-0 p-32 blur-3xl opacity-10 rounded-full ${
+              insights.trend.isPositive ? 'bg-emerald-500' : 'bg-red-500'
+            }`}
+          ></div>
           <div className="flex justify-between items-start z-10">
-            <div className={`p-3 rounded-2xl ${insights.trend.isPositive ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'}`}>
-              {insights.trend.isPositive ? <ArrowTrendingUpIcon className="w-6 h-6" /> : <ArrowTrendingDownIcon className="w-6 h-6" />}
+            <div
+              className={`p-3 rounded-2xl ${
+                insights.trend.isPositive
+                  ? 'bg-emerald-500/10 text-emerald-500'
+                  : 'bg-red-500/10 text-red-500'
+              }`}
+            >
+              {insights.trend.isPositive ? (
+                <ArrowTrendingUpIcon className="w-6 h-6" />
+              ) : (
+                <ArrowTrendingDownIcon className="w-6 h-6" />
+              )}
             </div>
           </div>
           <div className="z-10">
             <p className="text-4xl font-bold text-white mb-1">
-              {insights.trend.isPositive ? '+' : ''}{insights.trend.value}%
+              {insights.trend.isPositive ? '+' : ''}
+              {insights.trend.value}%
             </p>
             <p className="text-sm text-slate-400 font-medium">Volume vs Last Week</p>
             <p className="text-xs text-slate-500 mt-2">
-              {Math.round(insights.trend.current / 1000)}k kg moved this week
+              {Math.round(weeklyMovedDisplay / 1000)}k {unit} moved this week
             </p>
           </div>
         </div>
@@ -141,7 +167,8 @@ const InsightsPanel: React.FC<InsightsPanelProps> = ({ workouts }) => {
           </div>
           <div className="z-10">
             <p className="text-4xl font-bold text-white mb-1">
-              {insights.heaviest.weight}<span className="text-xl text-slate-500 ml-1">kg</span>
+              {Math.round(heaviestDisplay)}
+              <span className="text-xl text-slate-500 ml-1">{unit}</span>
             </p>
             <p className="text-sm text-slate-400 font-medium line-clamp-1">{insights.heaviest.name}</p>
             <p className="text-xs text-slate-500 mt-2">Your heaviest lift recorded</p>
@@ -157,9 +184,7 @@ const InsightsPanel: React.FC<InsightsPanelProps> = ({ workouts }) => {
             </div>
           </div>
           <div className="z-10">
-            <p className="text-xl font-bold text-white mb-1 line-clamp-2 leading-tight">
-              {insights.favorite.name}
-            </p>
+            <p className="text-xl font-bold text-white mb-1 line-clamp-2 leading-tight">{insights.favorite.name}</p>
             <p className="text-sm text-slate-400 font-medium mt-1">Most Frequent</p>
             <p className="text-xs text-slate-500 mt-2">Performed in {insights.favorite.count} sessions</p>
           </div>
@@ -174,9 +199,7 @@ const InsightsPanel: React.FC<InsightsPanelProps> = ({ workouts }) => {
             </div>
           </div>
           <div className="z-10">
-            <p className="text-4xl font-bold text-white mb-1">
-              {insights.reps.toLocaleString()}
-            </p>
+            <p className="text-4xl font-bold text-white mb-1">{insights.reps.toLocaleString()}</p>
             <p className="text-sm text-slate-400 font-medium">Monthly Reps</p>
             <p className="text-xs text-slate-500 mt-2">Total work in last 30 days</p>
           </div>
