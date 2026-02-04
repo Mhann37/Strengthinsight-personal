@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { processWorkoutScreenshots } from '../geminiService';
 import { useUserSettings } from '../contexts/UserSettingsContext';
 import { calcWorkoutVolumeKg, normalizeUnit, fromKg } from '../utils/unit';
+import type { Unit } from '../utils/unit';
 import { Workout, Exercise, SetRecord } from '../types';
 import {
   CloudArrowUpIcon,
@@ -100,10 +101,14 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
   const [error, setError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [pendingWorkouts, setPendingWorkouts] = useState<Workout[] | null>(null);
+  const [uploadUnitOverride, setUploadUnitOverride] = useState<Unit | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { settings } = useUserSettings();
   const preferredUnit = settings.unit;
+
+  const effectiveUploadUnit: Unit = uploadUnitOverride ?? preferredUnit;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []) as File[];
@@ -128,6 +133,23 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
 
   const removeFile = (index: number) => {
     setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const applyUnitOverrideToPending = (nextUnit: Unit) => {
+    if (!pendingWorkouts) return;
+
+    const updated = pendingWorkouts.map((w) => ({
+      ...w,
+      exercises: (w.exercises || []).map((ex) => ({
+        ...ex,
+        sets: (ex.sets || []).map((s: any) => ({
+          ...s,
+          unit: normalizeUnit(nextUnit),
+        })),
+      })),
+    }));
+
+    setPendingWorkouts(updated);
   };
 
   const handleProcess = async () => {
@@ -175,7 +197,9 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
       // 3) HARD GUARD: stop here if not an array
       if (!Array.isArray(normalized)) {
         console.warn('Unexpected AI response shape:', raw);
-        throw new Error("We couldn't extract a workout from these screenshots. Try clearer screenshots or fewer images.");
+        throw new Error(
+          "We couldn't extract a workout from these screenshots. Try clearer screenshots or fewer images."
+        );
       }
 
       // 4) Only now is it safe to touch each workout item
@@ -202,13 +226,14 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
             const fromName = inferMuscleGroupFromName(ex?.name);
 
             // ✅ Phase 1: normalize sets (numeric coercion + unit normalization)
+            // IMPORTANT: use effectiveUploadUnit so US users can override per upload even if their global setting is kg.
             const sets = Array.isArray(ex?.sets)
               ? ex.sets.map((s: any, idx: number) => ({
                   ...s,
                   setNumber: s?.setNumber ?? idx + 1,
                   reps: Number(s?.reps ?? 0),
                   weight: Number(s?.weight ?? 0),
-                  unit: normalizeUnit(s?.unit ?? preferredUnit),
+                  unit: normalizeUnit(s?.unit ?? effectiveUploadUnit),
                 }))
               : [];
 
@@ -222,15 +247,10 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
 
           const workout: Workout = {
             ...w,
-            // keep AI-provided date if you want it later, but do NOT prefill UI
             aiDate: w.date ?? w.workoutDate,
             date: '', // user selects
             exercises: patchedExercises,
           };
-
-          // Note: We intentionally compute totalVolume on confirmUpload (after user edits),
-          // but you can uncomment this if you want it prefilled for downstream UI:
-          // (workout as any).totalVolume = calcWorkoutVolumeKg(workout);
 
           return workout;
         });
@@ -245,7 +265,6 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
       console.error(err);
       let msg = 'Failed to extract data. Please ensure the screenshots are clear.';
 
-      // Handle known error messages from geminiService / Cloud Function
       if (err?.message) {
         if (err.message.includes('Access Denied')) {
           msg = 'Access Denied. You may need to be added to the beta tester list.';
@@ -267,7 +286,7 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
     if (!pendingWorkouts) return;
     setSaveError(null);
     const updated = [...pendingWorkouts];
-    updated[wIdx].date = newDate; // "YYYY-MM-DD"
+    updated[wIdx].date = newDate;
     setPendingWorkouts(updated);
   };
 
@@ -292,7 +311,6 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
     if (field === 'reps' || field === 'weight') {
       (set as any)[field] = Number(value);
     } else if (field === 'unit') {
-      // ✅ keep unit normalized if it ever changes
       (set as any)[field] = normalizeUnit(value);
     } else {
       (set as any)[field] = value;
@@ -325,8 +343,7 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
       setNumber: sets.length + 1,
       reps: lastSet?.reps || 10,
       weight: lastSet?.weight || 0,
-      // ✅ Phase 1: default to last unit or preferred unit (always normalized)
-      unit: normalizeUnit(lastSet?.unit ?? preferredUnit),
+      unit: normalizeUnit(lastSet?.unit ?? effectiveUploadUnit),
     });
 
     setPendingWorkouts(updated);
@@ -345,7 +362,6 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
     setSaveError(null);
 
     try {
-      // ✅ Phase 1: compute canonical totalVolume in kg (safe for mixed units)
       const finalized = pendingWorkouts.map((w) => ({
         ...w,
         totalVolume: calcWorkoutVolumeKg(w),
@@ -356,6 +372,7 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
       setPendingWorkouts(null);
       setSelectedFiles([]);
       setSelectedPlatform(null);
+      setUploadUnitOverride(null);
     } catch (err: any) {
       console.error('Confirmation Error:', err);
       setSaveError(err.message || 'An unexpected error occurred while saving your data.');
@@ -417,9 +434,31 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
   if (pendingWorkouts) {
     return (
       <div className="max-w-4xl mx-auto space-y-8 animate-fadeIn pb-20">
-        <header className="text-center">
-          <h1 className="text-3xl font-bold mb-2">Verify Extraction</h1>
+        <header className="text-center space-y-3">
+          <h1 className="text-3xl font-bold">Verify Extraction</h1>
           <p className="text-slate-400">Please audit the muscle group mapping and session data.</p>
+
+          {/* ✅ Per-upload override */}
+          <div className="flex items-center justify-center gap-3 pt-2">
+            <span className="text-[10px] uppercase font-bold text-slate-500 tracking-widest">
+              This upload uses
+            </span>
+            <select
+              value={effectiveUploadUnit}
+              onChange={(e) => {
+                const next = normalizeUnit(e.target.value) as Unit;
+                setUploadUnitOverride(next);
+                applyUnitOverrideToPending(next);
+              }}
+              className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 text-sm font-black text-blue-400 outline-none focus:border-blue-500 transition-all"
+            >
+              <option value="kg">kg (Metric)</option>
+              <option value="lbs">lbs (Imperial)</option>
+            </select>
+            <span className="text-[10px] text-slate-600 font-bold uppercase tracking-widest">
+              (Override)
+            </span>
+          </div>
         </header>
 
         <div className="space-y-12">
