@@ -154,7 +154,7 @@ const Login: React.FC = () => {
 
             <div className="bg-slate-950/40 p-6 rounded-3xl border border-slate-800">
               <img
-                src="/whoop-strength-example.jpg"
+                src="/examples/whoop-strength-example.jpg"
                 alt="WHOOP Strength Trainer screenshot extraction example"
                 className="w-full rounded-2xl border border-slate-800 shadow-2xl"
               />
