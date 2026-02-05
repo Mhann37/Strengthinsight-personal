@@ -62,15 +62,6 @@ const Login: React.FC = () => {
                 <span className="text-white font-semibold">volume</span>, and <span className="text-white font-semibold">lift history</span> by
                 extracting sets, reps, and weight from your screenshots — no API access and no manual entry.
               </p>
-              <p className="text-slate-400 text-base leading-relaxed max-w-xl">
-              StrengthInsight is a companion tool for WHOOP users who want deeper
-              <strong className="text-slate-200 font-semibold"> strength training analysis</strong>.
-              By extracting sets, reps, and weight from
-              <strong className="text-slate-200 font-semibold"> WHOOP Strength Trainer screenshots</strong>,
-              it helps lifters track
-              <strong className="text-slate-200 font-semibold"> volume, progression, and lift history</strong>
-              that WHOOP doesn’t currently surface.
-              </p>
             </div>
 
             {/* Primary CTAs */}
