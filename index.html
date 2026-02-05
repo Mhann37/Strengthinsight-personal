@@ -76,6 +76,40 @@
 }
 </script>
 </head>
+
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Does WHOOP expose Strength Trainer data via API?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "WHOOP does not currently expose per-exercise Strength Trainer data via API in a way that enables progression tracking. StrengthInsight uses screenshot extraction instead."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Do I need to manually enter workouts?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. StrengthInsight avoids manual entry by extracting workout data directly from WHOOP Strength Trainer screenshots."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is StrengthInsight affiliated with WHOOP?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. StrengthInsight is an independent companion tool and is not affiliated with WHOOP."
+      }
+    }
+  ]
+}
+</script>
+
 <body>
     <div id="root"></div>
     <script type="module" src="index.tsx"></script>
