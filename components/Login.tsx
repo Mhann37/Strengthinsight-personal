@@ -130,6 +130,41 @@ const Login: React.FC = () => {
             </p>
           </div>
         </div>
+
+        {/* SEO / Public explainer section (shown before login, crawlable by Google) */}
+        <section className="mt-24 border-t border-slate-800 pt-16 relative z-10">
+          <div className="max-w-4xl mx-auto px-6 space-y-10 text-left">
+            <h1 className="text-4xl font-extrabold tracking-tight text-white">
+              Analyse WHOOP Strength Trainer Workouts
+            </h1>
+
+            <p className="text-slate-400 text-lg leading-relaxed">
+              StrengthInsight helps you analyse WHOOP Strength Trainer workouts by extracting sets,
+              reps, and weight directly from screenshots. Track progression, total volume, and muscle
+              group trends over time — even though WHOOP does not yet expose this data via their API.
+            </p>
+
+            <ul className="space-y-3 text-slate-300">
+              <li>• Upload WHOOP Strength Trainer screenshots</li>
+              <li>• Automatically extract sets, reps, and weight</li>
+              <li>• Review and edit data before saving</li>
+              <li>• Track progression, volume, and muscle groups</li>
+              <li>• Supports both kg and lbs</li>
+            </ul>
+
+            <div className="bg-slate-950/40 p-6 rounded-3xl border border-slate-800">
+              <img
+                src="/whoop-strength-example.jpg"
+                alt="WHOOP Strength Trainer screenshot extraction example"
+                className="w-full rounded-2xl border border-slate-800 shadow-2xl"
+              />
+            </div>
+
+            <p className="text-slate-500 text-sm">
+              Free to try while in beta. Sign in above to get started.
+            </p>
+          </div>
+        </section>
       </div>
     </div>
   );
