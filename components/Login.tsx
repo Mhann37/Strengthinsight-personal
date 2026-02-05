@@ -277,7 +277,11 @@ const Login: React.FC = () => {
               loading="lazy"
             />
             <p className="text-slate-500 text-sm mt-3">
-              Example:
+              <p className="text-slate-500 text-sm leading-relaxed max-w-3xl">
+            StrengthInsight was built by a long-time WHOOP user to better understand strength
+            progression and training volume. It is an independent project and is not affiliated
+            with WHOOP.
+            </p>
             </p>
           </div>
 
