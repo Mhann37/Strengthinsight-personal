@@ -277,7 +277,7 @@ const Login: React.FC = () => {
               loading="lazy"
             />
             <p className="text-slate-500 text-sm mt-3">
-              Example: screenshot → extracted sets/reps/weight → analysis.
+              Example:
             </p>
           </div>
 
