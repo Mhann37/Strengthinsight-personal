@@ -55,12 +55,21 @@ const Login: React.FC = () => {
 
             <div className="space-y-4">
               <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-white leading-[1.05]">
-                Analyse WHOOP Strength Trainer workouts — beyond strain
+                WHOOP Strength Trainer Analysis — Track Strength Progression Beyond Strain
               </h1>
               <p className="text-slate-300 text-lg leading-relaxed max-w-xl">
                 WHOOP is great for effort. StrengthInsight helps you track <span className="text-white font-semibold">progression</span>,{' '}
                 <span className="text-white font-semibold">volume</span>, and <span className="text-white font-semibold">lift history</span> by
                 extracting sets, reps, and weight from your screenshots — no API access and no manual entry.
+              </p>
+              <p className="text-slate-400 text-base leading-relaxed max-w-xl">
+              StrengthInsight is a companion tool for WHOOP users who want deeper
+              <strong className="text-slate-200 font-semibold"> strength training analysis</strong>.
+              By extracting sets, reps, and weight from
+              <strong className="text-slate-200 font-semibold"> WHOOP Strength Trainer screenshots</strong>,
+              it helps lifters track
+              <strong className="text-slate-200 font-semibold"> volume, progression, and lift history</strong>
+              that WHOOP doesn’t currently surface.
               </p>
             </div>
 
