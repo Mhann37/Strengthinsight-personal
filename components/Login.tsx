@@ -231,7 +231,7 @@ const Login: React.FC = () => {
         </div>
       </div>
 
-      {/* Scroll sections (GymNote+ model) */}
+      {/* Scroll sections */}
       <div id="how-it-works" className="relative z-10 max-w-6xl mx-auto px-6 pb-24">
         <div className="mt-10 border-t border-slate-800/60 pt-14">
           <h2 className="text-3xl font-extrabold tracking-tight text-white mb-4">
@@ -268,6 +268,67 @@ const Login: React.FC = () => {
             </div>
           </div>
 
+          <div className="mt-10">
+  <h2 className="text-3xl font-extrabold tracking-tight text-white mb-4">
+    What WHOOP Strength Trainer shows (and what it doesn’t)
+  </h2>
+  <p className="text-slate-400 text-lg leading-relaxed max-w-3xl">
+    WHOOP does a strong job capturing session-level effort. Where many lifters get stuck is analysing strength progression at the exercise level.
+  </p>
+
+  <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="bg-slate-950/40 border border-slate-800 rounded-3xl p-6">
+      <h3 className="text-white font-bold">What WHOOP does well</h3>
+      <ul className="mt-3 space-y-2 text-slate-400 text-sm leading-relaxed list-disc pl-5">
+        <li>Session strain & effort context</li>
+        <li>Recovery/readiness insights around training</li>
+        <li>Consistency and training frequency</li>
+      </ul>
+    </div>
+
+    <div className="bg-slate-950/40 border border-slate-800 rounded-3xl p-6">
+      <h3 className="text-white font-bold">Where analysis is limited</h3>
+      <ul className="mt-3 space-y-2 text-slate-400 text-sm leading-relaxed list-disc pl-5">
+        <li>Per-exercise lift history over time</li>
+        <li>Week-to-week volume trends by movement</li>
+        <li>Clear progression views (load/volume per lift)</li>
+        <li>Simple export of workout details</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+   <div className="mt-10">
+  <h2 className="text-3xl font-extrabold tracking-tight text-white mb-4">
+    Why strength progression matters
+  </h2>
+  <p className="text-slate-400 text-lg leading-relaxed max-w-3xl">
+    Strain can tell you how hard a session felt. Progress shows up in trends — like increasing volume, improving reps at the same load, or gradually lifting more over time.
+  </p>
+
+  <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div className="bg-slate-950/40 border border-slate-800 rounded-3xl p-6">
+      <h3 className="text-white font-bold">Volume trends</h3>
+      <p className="text-slate-400 text-sm mt-2 leading-relaxed">
+        See whether you’re doing more meaningful work each week — or unknowingly plateauing.
+      </p>
+    </div>
+    <div className="bg-slate-950/40 border border-slate-800 rounded-3xl p-6">
+      <h3 className="text-white font-bold">Progressive overload</h3>
+      <p className="text-slate-400 text-sm mt-2 leading-relaxed">
+        Track key lifts so improvements are obvious, not guesswork.
+      </p>
+    </div>
+    <div className="bg-slate-950/40 border border-slate-800 rounded-3xl p-6">
+      <h3 className="text-white font-bold">Muscle group balance</h3>
+      <p className="text-slate-400 text-sm mt-2 leading-relaxed">
+        Understand what you’re really training over time — and what’s being neglected.
+      </p>
+    </div>
+  </div>
+</div>
+
+          
           {/* Proof image you already have in your repo */}
           <div className="mt-10 bg-slate-950/40 p-6 rounded-3xl border border-slate-800">
             <img
@@ -315,6 +376,43 @@ const Login: React.FC = () => {
               Independent project. Not affiliated with WHOOP.
             </p>
           </div>
+
+          <div className="mt-10">
+  <h2 className="text-3xl font-extrabold tracking-tight text-white mb-4">
+    Frequently asked questions
+  </h2>
+
+  <div className="grid grid-cols-1 gap-3 max-w-3xl">
+    <details className="bg-slate-950/40 border border-slate-800 rounded-3xl p-5">
+      <summary className="cursor-pointer text-white font-bold">
+        Does WHOOP expose Strength Trainer data via API?
+      </summary>
+      <p className="text-slate-400 text-sm mt-3 leading-relaxed">
+        WHOOP does not currently expose per-exercise Strength Trainer data via API in a way that enables progression tracking.
+        StrengthInsight uses screenshot extraction instead.
+      </p>
+    </details>
+
+    <details className="bg-slate-950/40 border border-slate-800 rounded-3xl p-5">
+      <summary className="cursor-pointer text-white font-bold">
+        Do I need to manually enter workouts?
+      </summary>
+      <p className="text-slate-400 text-sm mt-3 leading-relaxed">
+        No. StrengthInsight avoids manual entry by extracting workout data directly from WHOOP Strength Trainer screenshots.
+      </p>
+    </details>
+
+    <details className="bg-slate-950/40 border border-slate-800 rounded-3xl p-5">
+      <summary className="cursor-pointer text-white font-bold">
+        Is StrengthInsight affiliated with WHOOP?
+      </summary>
+      <p className="text-slate-400 text-sm mt-3 leading-relaxed">
+        No. StrengthInsight is an independent companion tool and is not affiliated with WHOOP.
+      </p>
+    </details>
+  </div>
+</div>
+
         </div>
       </div>
     </div>
