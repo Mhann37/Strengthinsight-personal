@@ -667,16 +667,7 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
               <li>You can review and edit everything before saving</li>
             </ul>
 
-            <div className="mt-3 bg-slate-900 border border-slate-800 rounded-2xl p-4">
-              <p className="text-slate-400 font-semibold mb-1">Units note</p>
-              <p className="text-slate-500">
-                Your data is stored in <span className="text-slate-300 font-semibold">kilograms</span> internally for consistency.
-                You can display <span className="text-slate-300 font-semibold">kg or lbs</span> at any time — nothing is locked in.
-              </p>
-              <p className="text-slate-500 mt-2">
-                <span className="text-slate-300 font-semibold">Beta:</span> if something looks off, you’ll always be able to edit it before saving.
-              </p>
-            </div>
+
           </div>
         </div>
       </header>
