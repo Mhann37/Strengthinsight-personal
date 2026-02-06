@@ -222,7 +222,7 @@ const MuscleGroups: React.FC<{ workouts: Workout[] }> = ({ workouts }) => {
             <div className="absolute inset-0 bg-blue-500/10 blur-[80px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
             <svg
               viewBox="0 0 100 200"
-              className="w-full max-w-[220px] relative z-10 transition-transform duration-500 hover:scale-105"
+              className="w-full max-w-[220px] scale-[0.8] relative z-10 transition-transform duration-500 hover:scale-105"
             >
               <circle cx="50" cy="20" r="14" className="fill-slate-800" />
               {/* Shoulders */}
