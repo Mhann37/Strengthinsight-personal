@@ -96,6 +96,40 @@ const InsightsPanel: React.FC<InsightsPanelProps> = ({ workouts }) => {
       }
     });
 
+    // Coach-style conversational insight
+let coachInsight = {
+  title: "Not enough data yet",
+  message: "Upload a few more workouts to unlock personalised insights.",
+};
+
+const weeklySessions = workouts.filter((w) => {
+  const d = new Date(w.date);
+  return d >= oneWeekAgo;
+}).length;
+
+if (weeklySessions >= 2) {
+  if (trendPercent < 0 && maxWeightKg > 0) {
+    coachInsight = {
+      title: "Heavier focus this week",
+      message:
+        "Your total training volume dipped slightly, but you still hit heavy lifts. This often happens during higher-intensity phases and isn’t necessarily a negative.",
+    };
+  } else if (trendPercent > 0) {
+    coachInsight = {
+      title: "Training volume is building",
+      message:
+        "You moved more total weight than last week, which suggests good consistency and progression across sessions.",
+    };
+  } else {
+    coachInsight = {
+      title: "Stable training pattern",
+      message:
+        "Your training volume is holding steady week to week — a good sign of consistency.",
+    };
+  }
+}
+
+    
     return {
       trend: {
         value: trendPercent,
@@ -111,6 +145,7 @@ const InsightsPanel: React.FC<InsightsPanelProps> = ({ workouts }) => {
         count: maxCount,
       },
       reps: monthlyReps,
+      coachInsight,
     };
   }, [workouts]);
 
@@ -122,6 +157,21 @@ const InsightsPanel: React.FC<InsightsPanelProps> = ({ workouts }) => {
   return (
     <section>
       <h2 className="text-xl font-bold mb-6">AI Insights</h2>
+      {/* Coach Insight */}
+<div className="mb-6 bg-slate-900 border border-slate-800 rounded-[2rem] p-4 sm:p-6 flex gap-4 items-start">
+  <div className="p-3 rounded-xl bg-indigo-500/10 text-indigo-400">
+    <SparklesIcon className="w-6 h-6" />
+  </div>
+  <div>
+    <p className="text-sm text-slate-400 mb-1">Coach Insight</p>
+    <p className="text-base font-semibold text-white">
+      {insights.coachInsight.title}
+    </p>
+    <p className="text-sm text-slate-400 mt-1 leading-relaxed">
+      {insights.coachInsight.message}
+    </p>
+  </div>
+</div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Card 1: Volume Trend */}
 <div className="bg-slate-900 border border-slate-800 p-4 sm:p-6 rounded-[2rem] sm:aspect-square flex flex-col justify-between relative overflow-hidden group hover:border-blue-500/30 transition-all">          <div
