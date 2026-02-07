@@ -49,7 +49,6 @@ const Login: React.FC = () => {
                 alt="StrengthInsight"
                 className="w-12 h-12 rounded-2xl shadow-2xl shadow-blue-500/20 object-contain"
               />
-              </div>
               <div>
                 <div className="text-white font-extrabold tracking-tight text-xl">StrengthInsight</div>
                 <div className="text-slate-500 text-sm">Independent WHOOP companion (not affiliated)</div>
