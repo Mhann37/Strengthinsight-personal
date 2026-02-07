@@ -13,6 +13,7 @@ import {
 import type { User } from "firebase/auth";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import * as firestoreModule from "firebase/firestore";
+import { trackEvent, setUserProps } from "./utils/analytics";
 
 // Bypass missing type definitions in some environments
 const {
@@ -73,7 +74,13 @@ setPersistence(auth, browserLocalPersistence).catch((error) => {
 export const signInWithGoogle = async () => {
   try {
     // Attempt Popup login first (works on modern iOS/Android)
-    return await signInWithPopup(auth, googleProvider);
+    const result = await signInWithPopup(auth, googleProvider);
+
+// GA: login completed
+trackEvent("login_completed", { method: "google_popup" });
+setUserProps({ logged_in: true });
+
+return result;
   } catch (error: any) {
     console.warn("Popup sign-in failed, attempting redirect fallback...", error.code);
     
@@ -82,7 +89,8 @@ export const signInWithGoogle = async () => {
       error.code === 'auth/popup-blocked' || 
       error.code === 'auth/operation-not-supported-in-this-environment'
     ) {
-      return signInWithRedirect(auth, googleProvider);
+      trackEvent("login_started", { method: "google_redirect" });
+return signInWithRedirect(auth, googleProvider);
     }
     throw error;
   }
