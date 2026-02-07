@@ -152,7 +152,7 @@ const AppInner: React.FC<{
 
       <aside
         className={`
-          fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 border-r border-slate-800 p-6 transform transition-transform duration-300 lg:relative lg:translate-x-0 flex flex-col
+          fixed inset-y-0 left-0 z-50 w-72 bg-slate-900 border-r border-slate-800 p-6 transform transition-transform duration-300 lg:relative lg:translate-x-0 flex flex-col
           ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
       >
