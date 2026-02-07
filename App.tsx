@@ -156,14 +156,16 @@ const AppInner: React.FC<{
           ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
       >
-        <div className="flex items-center space-x-3 mb-10 hidden lg:flex">
+        <div className="mb-10 hidden lg:flex items-center gap-3 min-w-0">
           <img
             src="/icons/icon-120.png"
             alt="StrengthInsight"
-            className="w-10 h-10 rounded-xl object-contain"
+            className="w-10 h-10 rounded-xl object-contain flex-shrink-0"
           />
 
-          <span className="font-bold text-2xl">StrengthInsight</span>
+          <span className="font-bold text-2xl tracking-tight truncate pr-2">
+          StrengthInsight
+          </span>
         </div>
 
         <nav className="flex-1 space-y-1">
