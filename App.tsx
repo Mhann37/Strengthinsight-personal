@@ -132,7 +132,7 @@ const AppInner: React.FC<{
   return (
     <div className="min-h-screen flex bg-slate-950">
       <div className="lg:hidden fixed top-0 left-0 right-0 bg-slate-900/80 backdrop-blur-md z-40 px-4 py-3 flex items-center justify-between border-b border-slate-800">
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-3 mb-10 pr-8">
           <img
   src="/icons/icon-120.png"
   alt="StrengthInsight"
