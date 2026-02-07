@@ -157,7 +157,12 @@ const AppInner: React.FC<{
         `}
       >
         <div className="flex items-center space-x-3 mb-10 hidden lg:flex">
-          <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-white text-xl italic">S</div>
+          <img
+            src="/icons/icon-120.png"
+            alt="StrengthInsight"
+            className="w-10 h-10 rounded-xl object-contain"
+          />
+
           <span className="font-bold text-2xl">StrengthInsight</span>
         </div>
 
