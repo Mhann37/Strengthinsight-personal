@@ -130,15 +130,10 @@ const AppInner: React.FC<{
   );
 
   return (
-    <div className="min-h-screen flex bg-slate-950">
+div className="min-h-screen flex bg-slate-950">
       <div className="lg:hidden fixed top-0 left-0 right-0 bg-slate-900/80 backdrop-blur-md z-40 px-4 py-3 flex items-center justify-between border-b border-slate-800">
         <div className="flex items-center space-x-2">
-          <img
-  src="/icons/icon-120.png"
-  alt="StrengthInsight"
-  className="w-8 h-8 rounded-lg object-contain"
-/>
-
+          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-white italic">S</div>
           <span className="font-bold text-xl">StrengthInsight</span>
         </div>
         <button onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
@@ -157,12 +152,7 @@ const AppInner: React.FC<{
         `}
       >
         <div className="flex items-center space-x-3 mb-10 hidden lg:flex">
-         <img
-  src="/icons/icon-120.png"
-  alt="StrengthInsight"
-  className="w-8 h-8 rounded-lg object-contain"
-/>
- </div>
+          <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-white text-xl italic">S</div>
           <span className="font-bold text-2xl">StrengthInsight</span>
         </div>
 
