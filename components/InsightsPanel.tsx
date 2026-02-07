@@ -124,8 +124,7 @@ const InsightsPanel: React.FC<InsightsPanelProps> = ({ workouts }) => {
       <h2 className="text-xl font-bold mb-6">AI Insights</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Card 1: Volume Trend */}
-        <div className="bg-slate-900 border border-slate-800 p-6 rounded-[2rem] aspect-square flex flex-col justify-between relative overflow-hidden group hover:border-blue-500/30 transition-all">
-          <div
+<div className="bg-slate-900 border border-slate-800 p-4 sm:p-6 rounded-[2rem] sm:aspect-square flex flex-col justify-between relative overflow-hidden group hover:border-blue-500/30 transition-all">          <div
             className={`absolute top-0 right-0 p-32 blur-3xl opacity-10 rounded-full ${
               insights.trend.isPositive ? 'bg-emerald-500' : 'bg-red-500'
             }`}
@@ -158,8 +157,7 @@ const InsightsPanel: React.FC<InsightsPanelProps> = ({ workouts }) => {
         </div>
 
         {/* Card 2: Heaviest Lift */}
-        <div className="bg-slate-900 border border-slate-800 p-6 rounded-[2rem] aspect-square flex flex-col justify-between relative overflow-hidden group hover:border-amber-500/30 transition-all">
-          <div className="absolute top-0 right-0 p-32 bg-amber-500 blur-3xl opacity-5 rounded-full"></div>
+<div className="bg-slate-900 border border-slate-800 p-4 sm:p-6 rounded-[2rem] sm:aspect-square flex flex-col justify-between relative overflow-hidden group hover:border-blue-500/30 transition-all">          <div className="absolute top-0 right-0 p-32 bg-amber-500 blur-3xl opacity-5 rounded-full"></div>
           <div className="flex justify-between items-start z-10">
             <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-500">
               <TrophyIcon className="w-6 h-6" />
@@ -176,8 +174,7 @@ const InsightsPanel: React.FC<InsightsPanelProps> = ({ workouts }) => {
         </div>
 
         {/* Card 3: Favorite Exercise */}
-        <div className="bg-slate-900 border border-slate-800 p-6 rounded-[2rem] aspect-square flex flex-col justify-between relative overflow-hidden group hover:border-purple-500/30 transition-all">
-          <div className="absolute top-0 right-0 p-32 bg-purple-500 blur-3xl opacity-5 rounded-full"></div>
+<div className="bg-slate-900 border border-slate-800 p-4 sm:p-6 rounded-[2rem] sm:aspect-square flex flex-col justify-between relative overflow-hidden group hover:border-blue-500/30 transition-all">          <div className="absolute top-0 right-0 p-32 bg-purple-500 blur-3xl opacity-5 rounded-full"></div>
           <div className="flex justify-between items-start z-10">
             <div className="p-3 rounded-2xl bg-purple-500/10 text-purple-500">
               <SparklesIcon className="w-6 h-6" />
@@ -191,8 +188,7 @@ const InsightsPanel: React.FC<InsightsPanelProps> = ({ workouts }) => {
         </div>
 
         {/* Card 4: Monthly Reps */}
-        <div className="bg-slate-900 border border-slate-800 p-6 rounded-[2rem] aspect-square flex flex-col justify-between relative overflow-hidden group hover:border-blue-500/30 transition-all">
-          <div className="absolute top-0 right-0 p-32 bg-blue-500 blur-3xl opacity-5 rounded-full"></div>
+<div className="bg-slate-900 border border-slate-800 p-4 sm:p-6 rounded-[2rem] sm:aspect-square flex flex-col justify-between relative overflow-hidden group hover:border-blue-500/30 transition-all">          <div className="absolute top-0 right-0 p-32 bg-blue-500 blur-3xl opacity-5 rounded-full"></div>
           <div className="flex justify-between items-start z-10">
             <div className="p-3 rounded-2xl bg-blue-500/10 text-blue-500">
               <ScaleIcon className="w-6 h-6" />
