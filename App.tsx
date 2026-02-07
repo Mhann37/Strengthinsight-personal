@@ -162,7 +162,7 @@ const AppInner: React.FC<{
   alt="StrengthInsight"
   className="w-8 h-8 rounded-lg object-contain"
 />
-
+ </div>
           <span className="font-bold text-2xl">StrengthInsight</span>
         </div>
 
