@@ -44,11 +44,8 @@ const Login: React.FC = () => {
           {/* LEFT: Marketing */}
           <div className="space-y-8">
             <div className="inline-flex items-center gap-3">
-              <img
-  src="/icons/icon-120.png"
-  alt="StrengthInsight"
-  className="w-12 h-12 rounded-2xl shadow-2xl shadow-blue-500/20 object-contain"
-/>
+              <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl shadow-2xl shadow-blue-500/20">
+                <span className="text-2xl font-black text-white italic">S</span>
 
               </div>
               <div>
