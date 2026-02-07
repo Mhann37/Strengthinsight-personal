@@ -5,13 +5,33 @@ import InsightsPanel from './InsightsPanel';
 import { useUserSettings } from '../contexts/UserSettingsContext';
 import { fromKg } from '../utils/unit';
 import { FireIcon, BoltIcon, TrophyIcon } from '@heroicons/react/24/solid';
-import { HeroStatsRow } from "../components/dashboard/HeroStatsRow";
-import { ExerciseSummaryCard } from "../components/dashboard/ExerciseSummaryCard";
 
 interface DashboardProps {
   workouts: Workout[];
   userName?: string | null;
 }
+
+type HeroStat = { label: string; value: React.ReactNode };
+
+const HeroStatsRow: React.FC<{ stats: HeroStat[] }> = ({ stats }) => {
+  return (
+    <div className="grid grid-cols-3 gap-3 md:hidden">
+      {stats.map((s) => (
+        <div
+          key={s.label}
+          className="bg-slate-900 border border-slate-800 rounded-2xl p-3"
+        >
+          <div className="text-[11px] uppercase tracking-wide text-slate-400">
+            {s.label}
+          </div>
+          <div className="mt-1 text-lg font-bold leading-tight">{s.value}</div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+
 
 const Dashboard: React.FC<DashboardProps> = ({ workouts, userName }) => {
   const { settings } = useUserSettings();
