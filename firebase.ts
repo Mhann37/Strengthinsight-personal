@@ -13,7 +13,7 @@ import {
 import type { User } from "firebase/auth";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import * as firestoreModule from "firebase/firestore";
-import { trackEvent, setUserProps } from "./utils/analytics";
+import { trackEvent, setUserProps } from "./analytics";
 
 // Bypass missing type definitions in some environments
 const {
