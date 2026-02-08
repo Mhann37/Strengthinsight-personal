@@ -107,7 +107,7 @@ const MuscleGroups: React.FC<{ workouts: Workout[] }> = ({ workouts }) => {
   const { settings } = useUserSettings();
   const unit = settings.unit;
 
-  const [timeframe, setTimeframe] = useState<7 | 30 | 90>(30);
+const [timeframe, setTimeframe] = useState<7 | 30 | 90 | 'all'>(30);
   const [selectedGroup, setSelectedGroup] = useState<string>('Chest');
 
   const stats = useMemo(() => {
@@ -120,9 +120,24 @@ const MuscleGroups: React.FC<{ workouts: Workout[] }> = ({ workouts }) => {
       peaksKg[g] = { name: 'None', volumeKg: 0 };
     });
 
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - timeframe);
-    cutoff.setHours(0, 0, 0, 0);
+  // Determine cutoff date (supports 'all' history)
+let cutoff: Date;
+
+if (timeframe === 'all') {
+  // Earliest workout date in the provided dataset
+  const earliest = workouts
+    .map((w) => toDateSafe((w as any).date))
+    .filter((d): d is Date => !!d)
+    .sort((a, b) => a.getTime() - b.getTime())[0];
+
+  cutoff = earliest ? new Date(earliest) : new Date(0);
+  cutoff.setHours(0, 0, 0, 0);
+} else {
+  cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - timeframe);
+  cutoff.setHours(0, 0, 0, 0);
+}
+
 
     // weeklyKg[weekKey][group] = volumeKg
     const weeklyKg: Record<string, Record<string, number>> = {};
@@ -193,22 +208,25 @@ const MuscleGroups: React.FC<{ workouts: Workout[] }> = ({ workouts }) => {
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold mb-1">Overload Analysis</h1>
-          <p className="text-slate-400">Muscle activation patterns from the last {timeframe} days.</p>
+         <p className="text-slate-400">
+  Muscle activation patterns {timeframe === 'all' ? 'across your full history' : `from the last ${timeframe} days`}.
+</p>
         </div>
         <div className="flex bg-slate-900 p-1.5 rounded-2xl border border-slate-800 w-fit">
-          {[7, 30, 90].map((t) => (
-            <button
-              key={t}
-              onClick={() => setTimeframe(t as any)}
-              className={`px-5 py-2 rounded-xl text-sm font-bold transition-all ${
-                timeframe === t
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/30'
-                  : 'text-slate-500 hover:text-slate-300'
-              }`}
-            >
-              {t} Days
-            </button>
-          ))}
+{([7, 30, 90, 'all'] as const).map((t) => (
+  <button
+    key={t}
+    onClick={() => setTimeframe(t)}
+    className={`px-5 py-2 rounded-xl text-sm font-bold transition-all ${
+      timeframe === t
+        ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/30'
+        : 'text-slate-500 hover:text-slate-300'
+    }`}
+  >
+    {t === 'all' ? 'All' : `${t} Days`}
+  </button>
+))}
+
         </div>
       </header>
 
@@ -378,7 +396,7 @@ const MuscleGroups: React.FC<{ workouts: Workout[] }> = ({ workouts }) => {
             <div>
               <h4 className="font-bold text-blue-400 mb-2">Longitudinal Insight</h4>
               <p className="text-slate-400 leading-relaxed">
-                Based on your {timeframe}-day volume, your{' '}
+                BBased on your {timeframe === 'all' ? 'full-history' : `${timeframe}-day`} volume, your{' '}
                 <strong>{topMuscle?.[0] || 'top muscle group'}</strong> are currently taking the highest load. If you're
                 feeling fatigue, consider prioritizing a "Deload Week" or switching focus to
                 <strong> {lowLoadMuscle || 'your supporting groups'}</strong> to maintain structural balance.
