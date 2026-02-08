@@ -4,7 +4,7 @@ import WeeklyHeatMap from './WeeklyHeatMap';
 import InsightsPanel from './InsightsPanel';
 import { useUserSettings } from '../contexts/UserSettingsContext';
 import { fromKg } from '../utils/unit';
-import { FireIcon, BoltIcon, TrophyIcon } from '@heroicons/react/24/solid';
+import { FireIcon, BoltIcon, TrophyIcon, InformationCircleIcon } from '@heroicons/react/24/solid';
 
 interface DashboardProps {
   workouts: Workout[];
@@ -74,7 +74,28 @@ const Dashboard: React.FC<DashboardProps> = ({ workouts, userName }) => {
         <h1 className="text-3xl font-bold mb-2">Welcome back, {firstName}</h1>
         <p className="text-slate-400">Here's your strength progression at a glance.</p>
       </header>
-      
+
+            {workouts.length === 0 && (
+        <div className="rounded-3xl border border-blue-500/20 bg-blue-600/10 p-4 md:p-5">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 shrink-0">
+              <InformationCircleIcon className="w-6 h-6 text-blue-400" />
+            </div>
+            <div>
+              <div className="text-xs font-black tracking-widest text-blue-400 uppercase">
+                Tip
+              </div>
+              <div className="text-slate-100 font-bold mt-1">
+                To see your insights, upload screenshots for three recent Strength Trainer workouts.
+              </div>
+              <div className="text-slate-300 text-sm mt-1">
+                Head to <span className="font-bold text-slate-100">Upload</span> to add your screenshots.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <HeroStatsRow
   stats={[
     { label: "Workouts", value: totalWorkouts },
