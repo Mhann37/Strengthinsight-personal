@@ -31,6 +31,66 @@ const HeroStatsRow: React.FC<{ stats: HeroStat[] }> = ({ stats }) => {
   );
 };
 
+const getWorkoutDate = (w: any): Date | null => {
+  const d = w?.date || w?.createdAt || w?.timestamp;
+  if (!d) return null;
+  const dt = new Date(d);
+  return Number.isNaN(dt.getTime()) ? null : dt;
+};
+
+const calcWorkoutVolumeKg = (w: any): number => {
+  // Prefer stored totalVolume if present (already canonical kg per your Phase 1).
+  if (typeof w?.totalVolume === 'number' && !Number.isNaN(w.totalVolume)) return w.totalVolume;
+
+  // Fallback: compute from sets
+  const exercises = Array.isArray(w?.exercises) ? w.exercises : [];
+  let total = 0;
+
+  for (const ex of exercises) {
+    const sets = Array.isArray(ex?.sets) ? ex.sets : [];
+    for (const s of sets) {
+      const reps = Number(s?.reps) || 0;
+      const weight = Number(s?.weight) || 0;
+      const unit = normalizeUnit(s?.unit);
+      const weightKg = toKg(weight, unit);
+      total += reps * weightKg;
+    }
+  }
+  return total;
+};
+
+const sanitizeWorkoutsForAI = (workouts: Workout[]) => {
+  return (workouts || []).map((w: any) => {
+    const dt = getWorkoutDate(w);
+    return {
+      date: dt ? dt.toISOString().slice(0, 10) : (w?.date || null),
+      // Keep only what’s needed for analysis
+      exercises: (w?.exercises || []).map((ex: any) => ({
+        name: ex?.name || 'Unknown',
+        muscleGroup: ex?.muscleGroup || null,
+        sets: (ex?.sets || []).map((s: any) => ({
+          reps: Number(s?.reps) || 0,
+          // export weight in kg for consistency
+          weightKg: toKg(Number(s?.weight) || 0, normalizeUnit(s?.unit)),
+        })),
+      })),
+      // Helpful derived field
+      totalVolumeKg: calcWorkoutVolumeKg(w),
+    };
+  });
+};
+
+const downloadJson = (filename: string, data: any) => {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+};
 
 
 const Dashboard: React.FC<DashboardProps> = ({ workouts, userName }) => {
@@ -62,6 +122,42 @@ const Dashboard: React.FC<DashboardProps> = ({ workouts, userName }) => {
   const d = raw?.date || raw?.createdAt || raw?.timestamp;
   if (!d) return '—';
 
+  const handleExportForAI = React.useCallback(() => {
+    const dated = [...(workouts || [])]
+      .map((w: any) => ({ w, d: getWorkoutDate(w) }))
+      .filter((x) => x.d)
+      .sort((a, b) => a.d!.getTime() - b.d!.getTime());
+
+    const start = dated.length ? dated[0].d!.toISOString().slice(0, 10) : null;
+    const end = dated.length ? dated[dated.length - 1].d!.toISOString().slice(0, 10) : null;
+
+    const exportPayload = {
+      exportVersion: '1.0',
+      generatedAt: new Date().toISOString(),
+      app: 'StrengthInsight',
+      unitPreference: unit, // user display unit
+      summary: {
+        totalWorkouts: workouts.length,
+        totalVolumeKg: totalVolumeKg,
+        dateRange: { start, end },
+        lastWorkoutLabel,
+      },
+      workouts: sanitizeWorkoutsForAI(workouts),
+      aiPrompt:
+        "You are a strength coach and training data analyst. Use ONLY the data in this JSON. " +
+        "1) Summarize weekly training volume trend and consistency. " +
+        "2) Identify any muscle-group imbalances (if muscleGroup is present). " +
+        "3) Call out plateaus or regressions. " +
+        "4) Give 3 practical focus areas for the next 2 weeks. " +
+        "Keep advice realistic and avoid assuming any missing data.",
+    };
+
+    const safeStart = start || 'no-data';
+    const safeEnd = end || 'no-data';
+    downloadJson(`strengthinsight-ai-export_${safeStart}_to_${safeEnd}.json`, exportPayload);
+  }, [workouts, unit, totalVolumeKg, lastWorkoutLabel]);
+
+    
   const dt = new Date(d);
   if (Number.isNaN(dt.getTime())) return '—';
 
@@ -104,10 +200,32 @@ const Dashboard: React.FC<DashboardProps> = ({ workouts, userName }) => {
   ]}
 />
 
-      <section className="bg-slate-900 border border-slate-800 rounded-3xl p-4 md:p-6 lg:p-8">
-        <h2 className="text-xl font-bold mb-4">Weekly Performance Matrix</h2>
-        <WeeklyHeatMap workouts={workouts} />
-      </section>
+   <section className="bg-slate-900 border border-slate-800 rounded-3xl p-4 md:p-6 lg:p-8">
+  <div className="flex items-start justify-between gap-4 mb-4">
+    <div>
+      <h2 className="text-xl font-bold">Weekly Performance Matrix</h2>
+      <p className="text-slate-400 text-sm mt-1">
+        Export your workouts + insights as JSON to discuss with ChatGPT/Gemini.
+      </p>
+    </div>
+
+    <button
+      onClick={handleExportForAI}
+      disabled={workouts.length === 0}
+      className={`shrink-0 px-4 py-2 rounded-xl text-sm font-bold border transition-all ${
+        workouts.length === 0
+          ? 'bg-slate-950/40 text-slate-600 border-slate-800 cursor-not-allowed'
+          : 'bg-slate-950 text-blue-400 border-slate-800 hover:border-blue-500/50 hover:text-blue-300'
+      }`}
+      title={workouts.length === 0 ? 'Upload workouts to enable export' : 'Download AI-ready JSON export'}
+    >
+      Export for AI (JSON)
+    </button>
+  </div>
+
+  <WeeklyHeatMap workouts={workouts} />
+</section>
+
 
     <div className="hidden md:grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl">
