@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+
+    <title>Can I Access WHOOP Strength Trainer Data? (What You Can and Can’t Export)</title>
+    <meta
+      name="description"
+      content="Can you access or export WHOOP Strength Trainer data? Here’s what WHOOP provides today, practical options for getting your strength data out, and how to use it for progression."
+    />
+    <link
+      rel="canonical"
+      href="https://www.strengthinsight.app/blog/can-i-access-whoop-strength-trainer-data/"
+    />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="article" />
+    <meta property="og:title" content="Can I Access WHOOP Strength Trainer Data?" />
+    <meta
+      property="og:description"
+      content="What WHOOP provides today, what’s possible to export, and how to use strength data for progression tracking."
+    />
+    <meta
+      property="og:url"
+      content="https://www.strengthinsight.app/blog/can-i-access-whoop-strength-trainer-data/"
+    />
+
+    <style>
+      :root { color-scheme: dark; }
+      body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; background:#070b16; color:#e5e7eb; }
+      .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 64px; }
+      a { color:#60a5fa; text-decoration:none; }
+      a:hover { text-decoration:underline; }
+      .card { background: rgba(15,23,42,.7); border: 1px solid rgba(51,65,85,.6); border-radius: 24px; padding: 22px; }
+      h1 { font-size: 34px; line-height: 1.1; margin: 0 0 12px; }
+      h2 { font-size: 22px; margin: 28px 0 10px; }
+      h3 { font-size: 16px; margin: 18px 0 8px; color: rgba(226,232,240,.98); }
+      p, li { line-height: 1.7; color: rgba(226,232,240,.92); }
+      .muted { color: rgba(148,163,184,.95); }
+      .cta { margin-top: 26px; padding: 18px; border-radius: 20px; border: 1px solid rgba(59,130,246,.25); background: rgba(37,99,235,.12); }
+      .btn { display:inline-block; margin-top: 10px; padding: 10px 14px; border-radius: 14px; background:#2563eb; color:#fff; font-weight: 700; }
+      .btn:hover { text-decoration:none; background:#3b82f6; }
+      .pill { display:inline-block; font-size: 12px; padding: 6px 10px; border-radius: 999px; border: 1px solid rgba(51,65,85,.7); background: rgba(2,6,23,.6); color: rgba(226,232,240,.9); margin-right: 8px; margin-top: 8px; }
+      .toplink { display:inline-block; margin-bottom: 16px; }
+      .hr { height:1px; background: rgba(51,65,85,.5); margin: 22px 0; }
+      code { background: rgba(2,6,23,.65); border: 1px solid rgba(51,65,85,.55); padding: 2px 6px; border-radius: 8px; }
+    </style>
+  </head>
+
+  <body>
+    <div class="wrap">
+      <a class="toplink muted" href="/">← Back to StrengthInsight</a>
+
+      <div class="card">
+        <h1>Can I Access WHOOP Strength Trainer Data?</h1>
+        <p class="muted">
+          If you use WHOOP Strength Trainer for lifting, it’s natural to ask whether you can access or export your
+          strength workout data — especially if you want clearer progression trends over weeks and months.
+        </p>
+
+        <div>
+          <span class="pill">Short answer</span>
+          <span class="pill">Yes (partially)</span>
+          <span class="pill">Depends on method</span>
+        </div>
+
+        <h2>What “access” means (and what most people want)</h2>
+        <p>
+          Most users aren’t looking for raw sensor streams — they’re looking for practical strength information:
+        </p>
+        <ul>
+          <li>Your workout history (dates, exercises, sets, reps, weight)</li>
+          <li>Trends like weekly volume and muscle-group balance</li>
+          <li>A way to review progression outside the session-by-session view</li>
+        </ul>
+
+        <h2>What WHOOP provides today</h2>
+        <p>
+          WHOOP gives you excellent in-app visibility of individual Strength Trainer sessions. Accessing that data
+          outside the app is where things become less straightforward.
+        </p>
+        <ul>
+          <li><strong>In-app history:</strong> You can view past strength sessions and exercise details.</li>
+          <li><strong>Exports / sharing:</strong> Export options vary and may not include every strength-specific field in a clean format.</li>
+          <li><strong>Programmatic access:</strong> Availability depends on official APIs and what endpoints/fields are exposed.</li>
+        </ul>
+
+        <div class="hr"></div>
+
+        <h2>Practical ways to get Strength Trainer data out</h2>
+
+        <h3>1) Manual capture (fastest for progression)</h3>
+        <p>
+          If your goal is simply to see progression trends, the fastest “export” is often just capturing the workout
+          summary details you already see — enough to compute weekly volume and trends.
+        </p>
+        <ul>
+          <li>Pros: quick, no setup, works for everyone</li>
+          <li>Cons: not a full historical export unless you do many sessions</li>
+        </ul>
+
+        <h3>2) Official export options (good for general history)</h3>
+        <p>
+          WHOOP may provide account-level export options for certain datasets. These can be useful for broader analysis,
+          but strength session data can be harder to interpret depending on format and included fields.
+        </p>
+        <ul>
+          <li>Pros: more comprehensive than manual capture</li>
+          <li>Cons: may not be strength-optimised; fields can be missing or difficult to map</li>
+        </ul>
+
+        <h3>3) API access (best when available)</h3>
+        <p>
+          If WHOOP exposes strength-session fields via official APIs, programmatic access is the cleanest long-term route.
+          The tradeoff is complexity: auth, permissions, field mapping, and keeping up with platform changes.
+        </p>
+        <ul>
+          <li>Pros: most scalable and automatable</li>
+          <li>Cons: requires developer effort and depends on what WHOOP actually exposes</li>
+        </ul>
+
+        <h2>What to do if your real goal is progression</h2>
+        <p>
+          If what you want is “am I improving?”, you don’t need perfect data export to start. A small slice of recent
+          workouts is enough to generate useful trend views like:
+        </p>
+        <ul>
+          <li><strong>Weekly volume</strong> (reps × weight)</li>
+          <li><strong>Muscle group balance</strong> (chest/back/legs etc.)</li>
+          <li><strong>Consistency</strong> (how regularly you’re training each group)</li>
+        </ul>
+
+        <div class="cta">
+          <div class="muted" style="text-transform:uppercase; font-weight:900; letter-spacing:.12em; font-size:12px;">Tip</div>
+          <div style="font-weight:800; font-size:18px; margin-top:6px;">
+            Want clearer progression trends from your Strength Trainer history?
+          </div>
+          <p class="muted" style="margin:8px 0 0;">
+            StrengthInsight is a lightweight companion that focuses on strength progression and trend views.
+          </p>
+          <a class="btn" href="/">View StrengthInsight</a>
+          <p class="muted" style="margin:10px 0 0; font-size:13px;">
+            Most users get meaningful trends after uploading three recent Strength Trainer workouts.
+          </p>
+        </div>
+
+        <h2>FAQ</h2>
+
+        <h3>Can I export WHOOP Strength Trainer workouts to a spreadsheet?</h3>
+        <p>
+          Sometimes — depending on what export format is available to your account. Even when you can export, strength
+          workouts may need cleanup or mapping to be useful for progression.
+        </p>
+
+        <h3>Is there a simple way to see progression without exporting everything?</h3>
+        <p>
+          Yes. Start with a small set of recent workouts and track weekly volume and key lift top sets. You can build
+          a useful trend picture without needing a complete historical export.
+        </p>
+
+        <h3>Will WHOOP add more strength data access over time?</h3>
+        <p>
+          Possibly. Platforms evolve — but relying on “future features” is frustrating if you want progression visibility
+          today. Start with the data you can access now and refine later.
+        </p>
+
+        <div class="hr"></div>
+
+        <p class="muted" style="margin: 0;">
+          Related: <a href="/blog/whoop-strength-trainer-progression/">How to see WHOOP Strength Trainer progression</a>
+        </p>
+      </div>
+    </div>
+  </body>
+</html>
