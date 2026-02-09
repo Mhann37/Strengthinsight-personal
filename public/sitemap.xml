@@ -32,4 +32,15 @@
   </url>
 
   <url>
-    <loc>https://www.strengthinsight.app/blog/whoop-str
+    <loc>https://www.strengthinsight.app/blog/whoop-strength-trainer-progression/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+  <url>
+    <loc>https://www.strengthinsight.app/privacy.html</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+
+</urlset>
