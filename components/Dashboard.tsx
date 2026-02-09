@@ -3,7 +3,7 @@ import { Workout } from '../types';
 import WeeklyHeatMap from './WeeklyHeatMap';
 import InsightsPanel from './InsightsPanel';
 import { useUserSettings } from '../contexts/UserSettingsContext';
-import { fromKg } from '../utils/unit';
+import { fromKg, toKg, normalizeUnit } from '../utils/unit';
 import { FireIcon, BoltIcon, TrophyIcon, InformationCircleIcon } from '@heroicons/react/24/solid';
 
 interface DashboardProps {
@@ -118,11 +118,17 @@ const Dashboard: React.FC<DashboardProps> = ({ workouts, userName }) => {
   const firstName = userName ? userName.split(' ')[0] : 'Athlete';
 
   const lastWorkoutLabel = React.useMemo(() => {
-  const raw: any = recentWorkout as any;
-  const d = raw?.date || raw?.createdAt || raw?.timestamp;
-  if (!d) return '—';
+    const raw: any = recentWorkout as any;
+    const d = raw?.date || raw?.createdAt || raw?.timestamp;
+    if (!d) return '—';
 
-  const handleExportForAI = React.useCallback(() => {
+    const dt = new Date(d);
+    if (Number.isNaN(dt.getTime())) return '—';
+
+    return dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  }, [recentWorkout]);
+
+    const handleExportForAI = React.useCallback(() => {
     const dated = [...(workouts || [])]
       .map((w: any) => ({ w, d: getWorkoutDate(w) }))
       .filter((x) => x.d)
@@ -157,12 +163,6 @@ const Dashboard: React.FC<DashboardProps> = ({ workouts, userName }) => {
     downloadJson(`strengthinsight-ai-export_${safeStart}_to_${safeEnd}.json`, exportPayload);
   }, [workouts, unit, totalVolumeKg, lastWorkoutLabel]);
 
-    
-  const dt = new Date(d);
-  if (Number.isNaN(dt.getTime())) return '—';
-
-  return dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-}, [recentWorkout]);
   
   return (
     <div className="space-y-8 animate-fadeIn">
