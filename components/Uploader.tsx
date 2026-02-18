@@ -69,11 +69,69 @@ interface UploaderProps {
 
 interface FileWithPreview {
   file: File;
-  preview: string;
+  preview: string; // data URL (compressed)
 }
 
 type Platform = 'whoop' | 'garmin' | null;
 type Unit = 'kg' | 'lbs';
+
+/**
+ * Estimate bytes of a base64 data URL (rough but good enough to guard uploads)
+ */
+const dataUrlByteSize = (dataUrl: string) => {
+  const base64 = dataUrl.split(',')[1] ?? '';
+  return Math.floor((base64.length * 3) / 4);
+};
+
+/**
+ * Compress + downscale screenshots client-side to avoid 400s on callable size limits.
+ * Converts to JPEG for major size reduction on iOS screenshots (PNG -> JPEG).
+ */
+const compressImageToDataUrl = async (
+  file: File,
+  opts?: { maxWidth?: number; quality?: number }
+): Promise<{ dataUrl: string; outFile: File }> => {
+  const maxWidth = opts?.maxWidth ?? 1080;
+  const quality = opts?.quality ?? 0.72;
+
+  const objectUrl = URL.createObjectURL(file);
+
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error('Failed to load image for compression'));
+      el.src = objectUrl;
+    });
+
+    const scale = img.width > maxWidth ? maxWidth / img.width : 1;
+    const targetW = Math.round(img.width * scale);
+    const targetH = Math.round(img.height * scale);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = targetW;
+    canvas.height = targetH;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Canvas not supported');
+
+    ctx.drawImage(img, 0, 0, targetW, targetH);
+
+    // Always JPEG for screenshot compression
+    const dataUrl = canvas.toDataURL('image/jpeg', quality);
+
+    // Create a smaller File as well (future-proof if you later move to Storage)
+    const blob = await (await fetch(dataUrl)).blob();
+    const outFile = new File([blob], file.name.replace(/\.\w+$/, '') + '.jpg', {
+      type: 'image/jpeg',
+      lastModified: file.lastModified,
+    });
+
+    return { dataUrl, outFile };
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+};
 
 const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
   const [selectedPlatform, setSelectedPlatform] = useState<Platform>(null);
@@ -94,24 +152,35 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
 
   const effectiveUnit: Unit = uploadUnitOverride ?? preferredUnit;
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []) as File[];
-    if (files.length > 0) {
-      setError(null);
-      setSaveError(null);
-      files.forEach((file) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setSelectedFiles((prev) => [
-            ...prev,
-            {
-              file,
-              preview: reader.result as string,
-            },
-          ]);
-        };
-        reader.readAsDataURL(file);
-      });
+    if (files.length === 0) return;
+
+    setError(null);
+    setSaveError(null);
+
+    try {
+      // Sequential to reduce memory spikes on mobile Safari
+      for (const file of files) {
+        const { dataUrl, outFile } = await compressImageToDataUrl(file, {
+          maxWidth: 1080,
+          quality: 0.72,
+        });
+
+        setSelectedFiles((prev) => [
+          ...prev,
+          {
+            file: outFile,
+            preview: dataUrl,
+          },
+        ]);
+      }
+    } catch (err: any) {
+      console.error(err);
+      setError(err?.message || 'Failed to prepare images. Please try again.');
+    } finally {
+      // allow re-selecting same files
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -126,8 +195,17 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
     setSaveError(null);
 
     try {
+      // ✅ Guard: block oversized batches before they hit callable limits
+      const totalBytes = selectedFiles.reduce((sum, f) => sum + dataUrlByteSize(f.preview), 0);
+      const totalMB = totalBytes / (1024 * 1024);
+      if (totalMB > 3.5) {
+        throw new Error(
+          `Upload too large (${totalMB.toFixed(1)}MB). Try fewer screenshots (1–2) or crop them.`
+        );
+      }
+
       const imagesData = selectedFiles.map((f) => ({
-        base64: f.preview,
+        base64: f.preview, // still a data URL, geminiService strips header
         timestamp: f.file.lastModified,
       }));
 
@@ -241,9 +319,9 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
       let msg = 'Failed to extract data. Please ensure the screenshots are clear.';
 
       if (err?.message) {
-        if (err.message.includes('Access Denied')) {
+        if (String(err.message).includes('Access Denied')) {
           msg = 'Access Denied. You may need to be added to the beta tester list.';
-        } else if (err.message.includes('Service Busy')) {
+        } else if (String(err.message).includes('Service Busy')) {
           msg = 'System is busy. Please wait a moment and try again.';
         } else {
           msg = err.message;
@@ -666,13 +744,9 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
               <li>Metric and imperial units are supported</li>
               <li>You can review and edit everything before saving</li>
             </ul>
-
-
           </div>
         </div>
       </header>
-
-     
 
       <div
         onClick={() => !isProcessing && fileInputRef.current?.click()}
@@ -756,7 +830,7 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
         )}
       </button>
 
-       {/* Example screenshot (C) */}
+      {/* Example screenshot (C) */}
       <section className="bg-slate-900 border border-slate-800 rounded-3xl p-6 lg:p-8">
         <div className="flex items-center justify-between gap-4">
           <div>
@@ -769,12 +843,12 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
           <img
             src="/examples/whoop-strength-summary.jpg"
             alt="Example WHOOP Strength Trainer exercise summary screenshot"
-          className="max-h-[40rem] w-auto object-contain mx-auto rounded-xl border border-slate-800 bg-slate-950/40 p-3 opacity-90"
+            className="max-h-[40rem] w-auto object-contain mx-auto rounded-xl border border-slate-800 bg-slate-950/40 p-3 opacity-90"
             loading="lazy"
           />
         </div>
       </section>
-      
+
       <style>{`
         @keyframes shake {
           0%, 100% { transform: translateX(-50%) rotate(0deg); }
