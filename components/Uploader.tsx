@@ -199,9 +199,7 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
       const totalBytes = selectedFiles.reduce((sum, f) => sum + dataUrlByteSize(f.preview), 0);
       const totalMB = totalBytes / (1024 * 1024);
       if (totalMB > 3.5) {
-        throw new Error(
-          `Upload too large (${totalMB.toFixed(1)}MB). Try fewer screenshots (1–2) or crop them.`
-        );
+        throw new Error(`Upload too large (${totalMB.toFixed(1)}MB). Try fewer screenshots (1–2) or crop them.`);
       }
 
       const imagesData = selectedFiles.map((f) => ({
@@ -769,7 +767,10 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
           <div className="w-full space-y-6">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {selectedFiles.map((f, i) => (
-                <div key={i} className="relative group/thumb aspect-[3/4] rounded-2xl overflow-hidden border border-slate-700 shadow-xl">
+                <div
+                  key={i}
+                  className="relative group/thumb aspect-[3/4] rounded-2xl overflow-hidden border border-slate-700 shadow-xl"
+                >
                   <img src={f.preview} alt={`Preview ${i}`} className="w-full h-full object-cover" />
                   <button
                     onClick={(e) => {
