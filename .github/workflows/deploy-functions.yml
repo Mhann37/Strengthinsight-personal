@@ -35,7 +35,7 @@ jobs:
 
       - name: Install functions deps
         working-directory: functions
-        run: npm ci
+        run: npm install
 
       - name: Build functions
         working-directory: functions
