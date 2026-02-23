@@ -10,6 +10,8 @@ const adminDb = getFirestore();
 
 // 1. Configuration
 const geminiApiKey = defineSecret("GEMINI_API_KEY");
+const whoopClientSecret = defineSecret("WHOOP_CLIENT_SECRET");
+const bridgeApiKey = defineSecret("MY_BRIDGE_API_KEY");
 type ReasonCode =
   | "UNAUTHENTICATED"
   | "BAD_INPUT"
@@ -388,6 +390,46 @@ export const processWorkoutScreenshots = onCall(
           : "internal";
 
       throw new HttpsError(callableCode as any, JSON.stringify(publicPayload));
+    }
+  }
+);
+import { onRequest } from "firebase-functions/v2/https";
+
+export const getWhoopVitals = onRequest(
+  {
+    secrets: [whoopClientSecret, bridgeApiKey],
+    region: "us-central1",
+    // This ensures only you/Gemini can call this without public browser issues
+    cors: false, 
+  },
+  async (req, res) => {
+    // 1. Security Check: Validate the secret bridge key in the header
+    const providedKey = req.headers["x-bridge-key"];
+    if (!providedKey || providedKey !== bridgeApiKey.value()) {
+      res.status(403).send("Unauthorized Access");
+      return;
+    }
+
+    // 2. Identify the user (Since it's just you, we use your token)
+    // In the future, you can store this token in Firestore
+    const whoopAccessToken = req.headers["x-whoop-token"];
+
+    if (!whoopAccessToken) {
+      res.status(400).send("Missing WHOOP Access Token");
+      return;
+    }
+
+    try {
+      // 3. Fetch data from WHOOP API
+      const response = await axios.get("https://api.prod.whoop.com/developer/v1/cycle", {
+        headers: { Authorization: `Bearer ${whoopAccessToken}` },
+        params: { limit: 1 } // Just get the latest cycle for the update
+      });
+
+      res.status(200).json(response.data);
+    } catch (error: any) {
+      console.error("WHOOP Sync Error:", error.message);
+      res.status(500).send("Failed to fetch WHOOP data");
     }
   }
 );
