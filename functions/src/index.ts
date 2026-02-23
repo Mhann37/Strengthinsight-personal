@@ -3,6 +3,7 @@ import { defineSecret } from "firebase-functions/params";
 import { GoogleGenAI, Type } from "@google/genai";
 import { initializeApp } from "firebase-admin/app";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
+import axios from "axios";
 
 initializeApp();
 const adminDb = getFirestore();
