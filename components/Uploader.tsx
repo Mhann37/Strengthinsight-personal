@@ -3,6 +3,7 @@ import { processWorkoutScreenshots } from '../geminiService';
 import { useUserSettings } from '../contexts/UserSettingsContext';
 import { calcWorkoutVolumeKg, normalizeUnit, fromKg, toKg } from '../utils/unit';
 import { Workout, Exercise, SetRecord } from '../types';
+import { trackEvent } from '../analytics';
 import {
   CloudArrowUpIcon,
   ExclamationCircleIcon,
@@ -194,6 +195,11 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
     setError(null);
     setSaveError(null);
 
+    trackEvent('upload_started', {
+      screenshot_count: selectedFiles.length,
+      platform: selectedPlatform,
+    });
+
     try {
       // ✅ Guard: block oversized batches before they hit callable limits
       const totalBytes = selectedFiles.reduce((sum, f) => sum + dataUrlByteSize(f.preview), 0);
@@ -312,19 +318,36 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
       }
 
       setPendingWorkouts(cleaned as any);
+      trackEvent('upload_extraction_succeeded', {
+        workout_count: cleaned.length,
+        screenshot_count: selectedFiles.length,
+      });
     } catch (err: any) {
       console.error(err);
       let msg = 'Failed to extract data. Please ensure the screenshots are clear.';
+      let reasonCode = 'unknown';
 
       if (err?.message) {
         if (String(err.message).includes('Access Denied')) {
           msg = 'Access Denied. You may need to be added to the beta tester list.';
+          reasonCode = 'access_denied';
         } else if (String(err.message).includes('Service Busy')) {
           msg = 'System is busy. Please wait a moment and try again.';
+          reasonCode = 'service_busy';
+        } else if (String(err.message).includes('too large') || String(err.message).includes('Upload too large')) {
+          reasonCode = 'payload_too_large';
+          msg = err.message;
+        } else if (String(err.message).includes("couldn't extract") || String(err.message).includes('No workouts detected')) {
+          reasonCode = 'extraction_failed';
+          msg = err.message;
         } else {
           msg = err.message;
         }
       }
+      trackEvent('upload_extraction_failed', {
+        reason_code: reasonCode,
+        screenshot_count: selectedFiles.length,
+      });
       setError(msg);
     } finally {
       setIsProcessing(false);
@@ -429,6 +452,8 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
       }));
 
       await onWorkoutsExtracted(finalized);
+
+      trackEvent('workouts_saved', { workout_count: finalized.length });
 
       setPendingWorkouts(null);
       setSelectedFiles([]);
@@ -741,6 +766,10 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
               <li>Screenshots should include exercise name, sets, reps, and weight</li>
               <li>Metric and imperial units are supported</li>
               <li>You can review and edit everything before saving</li>
+              <li>
+                <span className="text-slate-300 font-medium">Best results with 1–4 screenshots per upload.</span>{' '}
+                For longer workouts, split into multiple uploads.
+              </li>
             </ul>
           </div>
         </div>
@@ -800,6 +829,16 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
           </>
         )}
       </div>
+
+      {selectedFiles.length > 4 && (
+        <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-start space-x-3 text-amber-400">
+          <ExclamationCircleIcon className="w-5 h-5 shrink-0 mt-0.5" />
+          <div className="text-sm">
+            <span className="font-bold">Heads up:</span> You've selected {selectedFiles.length} screenshots. For best results,{' '}
+            keep uploads to 1–4 screenshots per session. Large batches may hit size limits — if extraction fails, try splitting into smaller groups.
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center space-x-3 text-red-400 animate-pulse">

@@ -15,6 +15,7 @@ import {
   User,
 } from './firebase';
 import { AppView, Workout } from './types';
+import { trackEvent } from './analytics';
 import Dashboard from './components/Dashboard';
 import Uploader from './components/Uploader';
 import History from './components/History';
@@ -81,6 +82,8 @@ const AppInner: React.FC<{
       onClick={() => {
         setView(id);
         setIsSidebarOpen(false);
+        if (id === 'analytics') trackEvent('view_analytics_opened', { workout_count: workouts.length });
+        if (id === 'history') trackEvent('view_history_opened', { workout_count: workouts.length });
       }}
       className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all w-full text-left relative ${
         view === id
@@ -371,6 +374,13 @@ const App: React.FC = () => {
     });
 
     await Promise.all(savePromises);
+
+    // Milestone tracking
+    const prevCount = workouts.length;
+    const nextCount = prevCount + newWorkouts.length;
+    if (prevCount < 5 && nextCount >= 5) trackEvent('milestone_5_workouts', { total_workouts: nextCount });
+    if (prevCount < 20 && nextCount >= 20) trackEvent('milestone_20_workouts', { total_workouts: nextCount });
+
     setView('dashboard');
   };
 

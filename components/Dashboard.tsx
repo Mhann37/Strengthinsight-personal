@@ -4,7 +4,59 @@ import WeeklyHeatMap from './WeeklyHeatMap';
 import InsightsPanel from './InsightsPanel';
 import { useUserSettings } from '../contexts/UserSettingsContext';
 import { fromKg, toKg, normalizeUnit } from '../utils/unit';
-import { FireIcon, BoltIcon, TrophyIcon, InformationCircleIcon } from '@heroicons/react/24/solid';
+import { FireIcon, BoltIcon, TrophyIcon, InformationCircleIcon, XMarkIcon } from '@heroicons/react/24/solid';
+import { trackEvent } from '../analytics';
+
+// ── What's New banner ──────────────────────────────────────────────────────
+// Bump WHATS_NEW_VERSION whenever you want to show the banner to everyone again.
+const WHATS_NEW_VERSION = 'v1.1';
+const WHATS_NEW_KEY = `si:whats-new-dismissed:${WHATS_NEW_VERSION}`;
+const WHATS_NEW_MESSAGE =
+  "Uploads are now more reliable on iPhone/iPad. For best results, upload 1–4 screenshots per session — long workouts work best when split into smaller batches.";
+
+const WhatsNewBanner: React.FC = () => {
+  const [dismissed, setDismissed] = React.useState<boolean>(() => {
+    try {
+      return localStorage.getItem(WHATS_NEW_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+
+  if (dismissed) return null;
+
+  const handleDismiss = () => {
+    try {
+      localStorage.setItem(WHATS_NEW_KEY, '1');
+    } catch {
+      // localStorage blocked (private browsing etc.) — just dismiss in-memory
+    }
+    setDismissed(true);
+  };
+
+  return (
+    <div className="rounded-3xl border border-blue-500/20 bg-blue-600/10 p-4 md:p-5">
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 shrink-0">
+          <InformationCircleIcon className="w-5 h-5 text-blue-400" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-xs font-black tracking-widest text-blue-400 uppercase mb-1">
+            What's New
+          </div>
+          <p className="text-slate-200 text-sm leading-relaxed">{WHATS_NEW_MESSAGE}</p>
+        </div>
+        <button
+          onClick={handleDismiss}
+          className="shrink-0 p-1 text-slate-500 hover:text-slate-300 transition-colors"
+          aria-label="Dismiss"
+        >
+          <XMarkIcon className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+};
 
 interface DashboardProps {
   workouts: Workout[];
@@ -129,6 +181,7 @@ const Dashboard: React.FC<DashboardProps> = ({ workouts, userName }) => {
   }, [recentWorkout]);
 
     const handleExportForAI = React.useCallback(() => {
+    trackEvent('export_ai_json_clicked', { workout_count: workouts.length });
     const dated = [...(workouts || [])]
       .map((w: any) => ({ w, d: getWorkoutDate(w) }))
       .filter((x) => x.d)
@@ -171,7 +224,9 @@ const Dashboard: React.FC<DashboardProps> = ({ workouts, userName }) => {
         <p className="text-slate-400">Here's your strength progression at a glance.</p>
       </header>
 
-            {workouts.length === 0 && (
+      <WhatsNewBanner />
+
+      {workouts.length === 0 && (
         <div className="rounded-3xl border border-blue-500/20 bg-blue-600/10 p-4 md:p-5">
           <div className="flex items-start gap-3">
             <div className="mt-0.5 shrink-0">
