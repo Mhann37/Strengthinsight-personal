@@ -145,6 +145,55 @@ const downloadJson = (filename: string, data: any) => {
 };
 
 
+// ── Recent Training Section ────────────────────────────────────────────────
+const RecentTrainingSection: React.FC<{ workouts: Workout[] }> = ({ workouts }) => {
+  const { settings } = useUserSettings();
+  const unit = settings.unit;
+
+  const recent = React.useMemo(() => workouts.slice(0, 5), [workouts]);
+
+  if (recent.length === 0) return null;
+
+  return (
+    <section className="bg-slate-900 border border-slate-800 rounded-3xl p-4 md:p-6">
+      <h2 className="text-base font-bold uppercase tracking-wider text-slate-400 mb-3">
+        Recent Training
+      </h2>
+      <div className="space-y-2">
+        {recent.map((w, i) => {
+          const dt = w.date ? new Date(w.date) : null;
+          const dateLabel =
+            dt && !Number.isNaN(dt.getTime())
+              ? dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+              : '—';
+          const workoutLabel = (w.exercises?.[0]?.name) || 'Workout';
+          const volumeDisplay = Math.round(fromKg(w.totalVolume || 0, unit));
+          const exCount = w.exercises?.length || 0;
+
+          return (
+            <div
+              key={w.id || i}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-2xl bg-slate-950/50 border border-slate-800/40 hover:border-slate-700/60 transition-colors"
+            >
+              <span className="text-slate-500 text-xs font-bold w-14 shrink-0">{dateLabel}</span>
+              <span className="flex-1 text-sm font-semibold text-slate-200 truncate min-w-0">
+                {workoutLabel}
+              </span>
+              <span className="text-xs text-slate-500 shrink-0 hidden sm:block">
+                {exCount} {exCount === 1 ? 'exercise' : 'exercises'}
+              </span>
+              <span className="text-xs text-slate-500 shrink-0 sm:hidden">{exCount}ex</span>
+              <span className="text-xs font-mono font-bold text-blue-400 shrink-0 text-right w-24">
+                {volumeDisplay.toLocaleString()} {unit}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+};
+
 const Dashboard: React.FC<DashboardProps> = ({ workouts, userName }) => {
   const { settings } = useUserSettings();
   const unit = settings.unit;
@@ -254,6 +303,8 @@ const Dashboard: React.FC<DashboardProps> = ({ workouts, userName }) => {
     { label: "Last", value: lastWorkoutLabel },
   ]}
 />
+
+      <RecentTrainingSection workouts={workouts} />
 
    <section className="bg-slate-900 border border-slate-800 rounded-3xl p-4 md:p-6 lg:p-8">
   <div className="flex items-start justify-between gap-4 mb-4">

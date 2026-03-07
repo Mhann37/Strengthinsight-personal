@@ -375,11 +375,25 @@ const App: React.FC = () => {
 
     await Promise.all(savePromises);
 
-    // Milestone tracking
     const prevCount = workouts.length;
     const nextCount = prevCount + newWorkouts.length;
-    if (prevCount < 5 && nextCount >= 5) trackEvent('milestone_5_workouts', { total_workouts: nextCount });
-    if (prevCount < 20 && nextCount >= 20) trackEvent('milestone_20_workouts', { total_workouts: nextCount });
+
+    // Track save
+    const oldestDate = workouts.length
+      ? workouts[workouts.length - 1]?.date
+      : null;
+    const daysSinceFirst = oldestDate
+      ? Math.floor((Date.now() - new Date(oldestDate).getTime()) / 86_400_000)
+      : 0;
+    trackEvent('workout_saved', {
+      workout_count: newWorkouts.length,
+      total_saved_workouts: nextCount,
+      days_since_first_workout: daysSinceFirst,
+    });
+
+    // Milestone tracking
+    if (prevCount < 5 && nextCount >= 5) trackEvent('user_reached_5_workouts', { total_workouts: nextCount });
+    if (prevCount < 20 && nextCount >= 20) trackEvent('user_reached_20_workouts', { total_workouts: nextCount });
 
     setView('dashboard');
   };
