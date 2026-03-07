@@ -86,6 +86,48 @@ const Analytics: React.FC<AnalyticsProps> = ({ workouts }) => {
       });
   }, [workouts, selectedExercise, unit]);
 
+  // Derived dataset for the historic exercise log, sorted newest → oldest
+  const exerciseHistoryData = useMemo(() => {
+    if (!selectedExercise) return [];
+
+    return workouts
+      .filter((w) => w.exercises.some((ex) => ex.name === selectedExercise))
+      .map((w) => {
+        const exercise = w.exercises.find((ex) => ex.name === selectedExercise)!;
+        const sets = exercise.sets;
+
+        const totalReps = sets.reduce((sum, s) => sum + (Number((s as any).reps) || 0), 0);
+
+        const maxWeightKg = sets.reduce((max, s) => {
+          const wKg = toKg(Number((s as any).weight) || 0, normalizeUnit((s as any).unit));
+          return Math.max(max, wKg);
+        }, 0);
+
+        const formattedSets = sets.map((s) => {
+          const reps = Number((s as any).reps) || 0;
+          const displayWeight = Math.round(
+            fromKg(toKg(Number((s as any).weight) || 0, normalizeUnit((s as any).unit)), unit)
+          );
+          return `Set ${(s as any).setNumber ?? sets.indexOf(s) + 1}: ${reps} × ${displayWeight} ${unit}`;
+        });
+
+        return {
+          date: w.date,
+          displayDate: new Date(w.date).toLocaleDateString(undefined, {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+          }),
+          exerciseName: exercise.name,
+          setCount: sets.length,
+          totalReps,
+          maxWeight: Math.round(fromKg(maxWeightKg, unit) * 10) / 10,
+          formattedSets,
+        };
+      })
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [workouts, selectedExercise, unit]);
+
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
@@ -273,6 +315,90 @@ const Analytics: React.FC<AnalyticsProps> = ({ workouts }) => {
             </div>
           </div>
         </div>
+      </section>
+
+      {/* Exercise History Log */}
+      <section className="bg-slate-900 border border-slate-800 rounded-3xl p-6 lg:p-8">
+        <div className="mb-6">
+          <h2 className="text-xl font-bold">Exercise History</h2>
+          <p className="text-sm text-slate-400 mt-1">
+            Every logged session for <span className="text-white font-medium">{selectedExercise || '—'}</span>, newest first.
+          </p>
+        </div>
+
+        {exerciseHistoryData.length === 0 ? (
+          <div className="flex items-center justify-center py-16 text-slate-500 italic">
+            {selectedExercise
+              ? 'No logged sessions found for this exercise.'
+              : 'Select an exercise above to view its history.'}
+          </div>
+        ) : (
+          <>
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left border-b border-slate-800">
+                    <th className="pb-3 pr-6 text-[10px] uppercase tracking-widest font-bold text-slate-500">Date</th>
+                    <th className="pb-3 pr-6 text-[10px] uppercase tracking-widest font-bold text-slate-500">Sets</th>
+                    <th className="pb-3 pr-6 text-[10px] uppercase tracking-widest font-bold text-slate-500">Total Reps</th>
+                    <th className="pb-3 pr-6 text-[10px] uppercase tracking-widest font-bold text-slate-500">Max Weight</th>
+                    <th className="pb-3 text-[10px] uppercase tracking-widest font-bold text-slate-500">Set Detail</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60">
+                  {exerciseHistoryData.map((row, idx) => (
+                    <tr key={`${row.date}-${idx}`} className="group hover:bg-slate-800/30 transition-colors">
+                      <td className="py-4 pr-6 font-mono text-slate-300 whitespace-nowrap">{row.displayDate}</td>
+                      <td className="py-4 pr-6 text-slate-300">{row.setCount}</td>
+                      <td className="py-4 pr-6 text-slate-300">{row.totalReps}</td>
+                      <td className="py-4 pr-6 font-semibold text-emerald-400 whitespace-nowrap">
+                        {row.maxWeight} {unit}
+                      </td>
+                      <td className="py-4">
+                        <div className="flex flex-wrap gap-x-4 gap-y-1">
+                          {row.formattedSets.map((s, si) => (
+                            <span key={si} className="font-mono text-xs text-slate-400">
+                              {s}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile card list */}
+            <div className="md:hidden space-y-4">
+              {exerciseHistoryData.map((row, idx) => (
+                <div
+                  key={`${row.date}-${idx}`}
+                  className="bg-slate-950 border border-slate-800/60 rounded-2xl p-4 space-y-3"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-sm text-slate-300">{row.displayDate}</span>
+                    <span className="text-emerald-400 font-semibold text-sm">
+                      {row.maxWeight} {unit} max
+                    </span>
+                  </div>
+                  <div className="flex gap-4 text-xs text-slate-400">
+                    <span>{row.setCount} sets</span>
+                    <span>{row.totalReps} reps</span>
+                  </div>
+                  <div className="pt-2 border-t border-slate-800 flex flex-col gap-1">
+                    {row.formattedSets.map((s, si) => (
+                      <span key={si} className="font-mono text-xs text-slate-500">
+                        {s}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </section>
     </div>
   );
