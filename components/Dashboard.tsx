@@ -145,6 +145,57 @@ const downloadJson = (filename: string, data: any) => {
 };
 
 
+// ── Session descriptor ─────────────────────────────────────────────────────
+// Derives a human-readable training focus label from the exercises in a workout.
+// Rule-based only — no AI involved.
+const getSessionDescriptor = (workout: Workout): string => {
+  const exercises = workout.exercises || [];
+
+  // Tally muscle groups; skip 'Other' and empty
+  const counts: Record<string, number> = {};
+  for (const ex of exercises) {
+    const g = ex.muscleGroup;
+    if (g && g !== 'Other') counts[g] = (counts[g] || 0) + 1;
+  }
+
+  const total = Object.values(counts).reduce((s, c) => s + c, 0);
+  if (total === 0) return exercises[0]?.name || 'Workout';
+
+  const pct = (g: string) => (counts[g] || 0) / total;
+  const sumPct = (...gs: string[]) => gs.reduce((s, g) => s + (counts[g] || 0), 0) / total;
+
+  // Single group dominates ≥50%
+  const singleLabels: Record<string, string> = {
+    Chest: 'Chest Focus',
+    Back: 'Back Focus',
+    Legs: 'Leg Focus',
+    Shoulders: 'Shoulders Focus',
+    Arms: 'Arms Focus',
+    Core: 'Core Focus',
+  };
+  for (const [g, c] of Object.entries(counts)) {
+    if (c / total >= 0.5 && singleLabels[g]) return singleLabels[g];
+  }
+
+  const lowerPct = pct('Legs');
+  const pushPct = sumPct('Chest', 'Shoulders');
+  const pullPct = sumPct('Back', 'Arms');
+  const upperPct = sumPct('Chest', 'Back', 'Shoulders', 'Arms', 'Core');
+
+  // Push / Pull compound focus (little to no lower body)
+  if (pushPct >= 0.45 && lowerPct < 0.2) return 'Push Focus';
+  if (pullPct >= 0.45 && lowerPct < 0.2 && pct('Back') > pct('Chest')) return 'Pull Focus';
+
+  // Full body: meaningful upper and lower both present
+  if (upperPct >= 0.25 && lowerPct >= 0.25) return 'Full Body';
+
+  // Body-half tiebreakers
+  if (lowerPct > upperPct) return 'Lower Body Focus';
+  if (upperPct > lowerPct) return 'Upper Body Focus';
+
+  return exercises[0]?.name || 'Workout';
+};
+
 // ── Recent Training Section ────────────────────────────────────────────────
 const RecentTrainingSection: React.FC<{ workouts: Workout[] }> = ({ workouts }) => {
   const { settings } = useUserSettings();
@@ -156,9 +207,12 @@ const RecentTrainingSection: React.FC<{ workouts: Workout[] }> = ({ workouts }) 
 
   return (
     <section className="bg-slate-900 border border-slate-800 rounded-3xl p-4 md:p-6">
-      <h2 className="text-base font-bold uppercase tracking-wider text-slate-400 mb-3">
-        Recent Training
-      </h2>
+      <div className="mb-4">
+        <h2 className="text-xl font-bold">Recent Training</h2>
+        <p className="text-slate-400 text-sm mt-1">
+          Your last 5 logged sessions, grouped by training focus.
+        </p>
+      </div>
       <div className="space-y-2">
         {recent.map((w, i) => {
           const dt = w.date ? new Date(w.date) : null;
@@ -166,7 +220,7 @@ const RecentTrainingSection: React.FC<{ workouts: Workout[] }> = ({ workouts }) 
             dt && !Number.isNaN(dt.getTime())
               ? dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
               : '—';
-          const workoutLabel = (w.exercises?.[0]?.name) || 'Workout';
+          const descriptor = getSessionDescriptor(w);
           const volumeDisplay = Math.round(fromKg(w.totalVolume || 0, unit));
           const exCount = w.exercises?.length || 0;
 
@@ -177,7 +231,7 @@ const RecentTrainingSection: React.FC<{ workouts: Workout[] }> = ({ workouts }) 
             >
               <span className="text-slate-500 text-xs font-bold w-14 shrink-0">{dateLabel}</span>
               <span className="flex-1 text-sm font-semibold text-slate-200 truncate min-w-0">
-                {workoutLabel}
+                {descriptor}
               </span>
               <span className="text-xs text-slate-500 shrink-0 hidden sm:block">
                 {exCount} {exCount === 1 ? 'exercise' : 'exercises'}
@@ -304,14 +358,12 @@ const Dashboard: React.FC<DashboardProps> = ({ workouts, userName }) => {
   ]}
 />
 
-      <RecentTrainingSection workouts={workouts} />
-
    <section className="bg-slate-900 border border-slate-800 rounded-3xl p-4 md:p-6 lg:p-8">
   <div className="flex items-start justify-between gap-4 mb-4">
     <div>
       <h2 className="text-xl font-bold">Weekly Performance Matrix</h2>
       <p className="text-slate-400 text-sm mt-1">
-        Export your workouts + insights as JSON to discuss with ChatGPT/Gemini.
+        See your last training days at a glance.
       </p>
     </div>
 
@@ -332,6 +384,7 @@ const Dashboard: React.FC<DashboardProps> = ({ workouts, userName }) => {
   <WeeklyHeatMap workouts={workouts} />
 </section>
 
+      <RecentTrainingSection workouts={workouts} />
 
     <div className="hidden md:grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl">
