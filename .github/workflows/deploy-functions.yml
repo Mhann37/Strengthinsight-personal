@@ -1,4 +1,4 @@
-name: Deploy Firebase Functions
+name: Deploy Firebase Functions & Rules
 
 on:
   push:
@@ -8,6 +8,7 @@ on:
       - "functions/**"
       - "firebase.json"
       - ".firebaserc"
+      - "firestore.rules"
 
 jobs:
   deploy:
@@ -41,5 +42,5 @@ jobs:
         working-directory: functions
         run: npm run build --if-present
 
-      - name: Deploy functions
-        run: npx firebase-tools deploy --only functions --project ${{ vars.GCP_PROJECT_ID }}
+      - name: Deploy functions and Firestore rules
+        run: npx firebase-tools deploy --only functions,firestore:rules --project ${{ vars.GCP_PROJECT_ID }}
