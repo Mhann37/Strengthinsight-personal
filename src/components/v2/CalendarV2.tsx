@@ -220,7 +220,7 @@ const CalendarV2: React.FC<CalendarV2Props> = ({ workouts }) => {
         </div>
 
         {/* Day of week headers */}
-        <div className="grid grid-cols-7 mb-2">
+        <div className="grid grid-cols-7 gap-1 mb-2">
           {DOW_LABELS.map((d) => (
             <div key={d} className="text-center text-[10px] font-bold uppercase tracking-widest text-slate-500 py-1">
               {d}

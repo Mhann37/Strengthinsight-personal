@@ -193,15 +193,14 @@ const AppShellV2: React.FC<AppShellV2Props> = ({
     await deleteDoc(doc(db, 'bodyweight', id));
   };
 
-  // Onboarding check
+  // Onboarding check — show only on first login (once ever)
   React.useEffect(() => {
-    if (dataLoading) return;
-    if (workouts.length > 0) return;
     try {
       if (localStorage.getItem('si:onboarding-complete:v2') === '1') return;
+      localStorage.setItem('si:onboarding-complete:v2', '1');
     } catch {}
     setShowOnboarding(true);
-  }, [workouts.length, dataLoading]);
+  }, []);
 
   const handleOnboardingComplete = (selectedUnit: Unit) => {
     setUnit(selectedUnit);
