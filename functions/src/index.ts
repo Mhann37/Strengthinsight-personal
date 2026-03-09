@@ -286,7 +286,7 @@ export const processWorkoutScreenshots = onCall(
       }
 
       const ai = new GoogleGenAI({ apiKey });
-      const model = "gemini-2.0-flash";
+      const model = "gemini-3-flash-preview";
 
       // E. Construct Prompt
       const promptText = `
