@@ -1,20 +1,21 @@
-import React, { useState, useMemo } from 'react';
-import { Workout } from '../../../types';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Workout, BodyweightEntry } from '../../../types';
 import { trackEvent } from '../../../analytics';
 import { useUserSettings } from '../../../contexts/UserSettingsContext';
 import type { Unit } from '../../../utils/unit';
 import type { User } from 'firebase/auth';
+import { db, collection, addDoc, setDoc, deleteDoc, doc, query, where, onSnapshot } from '../../../firebase';
 
 import DashboardV2 from './DashboardV2';
 import ProgressionV2 from './ProgressionV2';
 import SettingsV2 from './SettingsV2';
-import HevyImporter from './HevyImporter';
 import OnboardingOverlay from './OnboardingOverlay';
+import UploadWrapperV2 from './UploadWrapperV2';
+import BodyweightV2 from './BodyweightV2';
+import CalendarV2 from './CalendarV2';
 
 // V1 components reused in V2
-import Uploader from '../../../components/Uploader';
 import History from '../../../components/History';
-import Analytics from '../../../components/Analytics';
 import MuscleGroups from '../../../components/MuscleGroups';
 import DataExport from '../../../components/DataExport';
 
@@ -31,6 +32,8 @@ import {
   XMarkIcon,
   FireIcon,
   Bars3Icon,
+  CalendarDaysIcon,
+  ScaleIcon,
 } from '@heroicons/react/24/outline';
 
 export type V2View =
@@ -40,7 +43,9 @@ export type V2View =
   | 'muscleGroups'
   | 'history'
   | 'export'
-  | 'settings';
+  | 'settings'
+  | 'calendar'
+  | 'body';
 
 interface AppShellV2Props {
   user: User;
@@ -98,6 +103,8 @@ const MoreSheet: React.FC<{
   if (!open) return null;
 
   const items: { id: V2View; label: string; icon: React.ElementType }[] = [
+    { id: 'calendar', label: 'Training History', icon: CalendarDaysIcon },
+    { id: 'body', label: 'Body Weight', icon: ScaleIcon },
     { id: 'history', label: 'Workout Logs', icon: ClockIcon },
     { id: 'export', label: 'Export Data', icon: TableCellsIcon },
     { id: 'settings', label: 'Settings', icon: Cog6ToothIcon },
@@ -152,6 +159,39 @@ const AppShellV2: React.FC<AppShellV2Props> = ({
   const unit: Unit = settings.unit;
 
   const streak = useMemo(() => calcStreak(workouts), [workouts]);
+
+  // ── Bodyweight state + Firestore listener ──────────────────
+  const [bodyweightEntries, setBodyweightEntries] = useState<BodyweightEntry[]>([]);
+  useEffect(() => {
+    const q = query(collection(db, 'bodyweight'), where('userId', '==', user.uid));
+    const unsub = onSnapshot(q, (snap) => {
+      const entries = snap.docs.map((d) => ({ ...d.data(), id: d.id })) as BodyweightEntry[];
+      entries.sort((a, b) => b.date.localeCompare(a.date));
+      setBodyweightEntries(entries);
+    });
+    return () => unsub();
+  }, [user.uid]);
+
+  const latestBodyweightKg = bodyweightEntries.length > 0 ? bodyweightEntries[0].weight : undefined;
+
+  const handleAddBodyweight = async (weightKg: number, bwUnit: Unit) => {
+    const today = new Date().toISOString().slice(0, 10);
+    await addDoc(collection(db, 'bodyweight'), {
+      userId: user.uid,
+      date: today,
+      weight: weightKg,
+      unit: bwUnit,
+      createdAt: new Date().toISOString(),
+    });
+  };
+
+  const handleUpdateBodyweight = async (id: string, weightKg: number, bwUnit: Unit) => {
+    await setDoc(doc(db, 'bodyweight', id), { weight: weightKg, unit: bwUnit }, { merge: true });
+  };
+
+  const handleDeleteBodyweight = async (id: string) => {
+    await deleteDoc(doc(db, 'bodyweight', id));
+  };
 
   // Onboarding check
   React.useEffect(() => {
@@ -252,6 +292,8 @@ const AppShellV2: React.FC<AppShellV2Props> = ({
           <SideNavItem id="upload" label="Upload Workout" icon={ArrowUpTrayIcon} />
           <SideNavItem id="analytics" label="Progression" icon={ChartBarIcon} />
           <SideNavItem id="muscleGroups" label="Muscle Groups" icon={UserIcon} isBeta />
+          <SideNavItem id="calendar" label="Training History" icon={CalendarDaysIcon} />
+          <SideNavItem id="body" label="Body Weight" icon={ScaleIcon} />
           <SideNavItem id="history" label="Workout Logs" icon={ClockIcon} />
 
           <div className="pt-4 mt-4 border-t border-slate-800 space-y-1">
@@ -311,12 +353,22 @@ const AppShellV2: React.FC<AppShellV2Props> = ({
           ) : (
             <>
               {view === 'dashboard' && <DashboardV2 workouts={workouts} userName={user.displayName} setView={setView} />}
-              {view === 'upload' && <Uploader onWorkoutsExtracted={addWorkouts} />}
-              {view === 'analytics' && <ProgressionV2 workouts={workouts} />}
+              {view === 'upload' && <UploadWrapperV2 onWorkoutsExtracted={addWorkouts} existingWorkouts={workouts} />}
+              {view === 'analytics' && <ProgressionV2 workouts={workouts} latestBodyweightKg={latestBodyweightKg} setView={setView} />}
               {view === 'muscleGroups' && <MuscleGroups workouts={workouts} />}
               {view === 'history' && <History workouts={workouts} onDelete={deleteWorkout} />}
               {view === 'export' && <DataExport workouts={workouts} />}
               {view === 'settings' && <SettingsV2 user={user} unit={unit} setUnit={setUnit} isLoading={isSettingsLoading} workouts={workouts} onLogout={handleLogout} />}
+              {view === 'calendar' && <CalendarV2 workouts={workouts} />}
+              {view === 'body' && (
+                <BodyweightV2
+                  userId={user.uid}
+                  entries={bodyweightEntries}
+                  onAdd={handleAddBodyweight}
+                  onUpdate={handleUpdateBodyweight}
+                  onDelete={handleDeleteBodyweight}
+                />
+              )}
             </>
           )}
         </div>
