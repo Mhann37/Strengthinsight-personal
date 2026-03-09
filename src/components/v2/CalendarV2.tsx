@@ -9,7 +9,14 @@ interface CalendarV2Props {
 }
 
 // ── Helpers ───────────────────────────────────────────────────
-const isoDate = (d: Date): string => d.toISOString().slice(0, 10);
+// Use local date components — toISOString() returns UTC and causes
+// a +/- 1 day shift for users in non-UTC timezones.
+const isoDate = (d: Date): string => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
 
 const startOfMonth = (year: number, month: number): Date => new Date(year, month, 1);
 
@@ -23,7 +30,8 @@ const weekKey = (d: Date): string => {
   const diff = (day === 0 ? -6 : 1) - day;
   const mon = new Date(d);
   mon.setDate(mon.getDate() + diff);
-  return mon.toISOString().slice(0, 10);
+  mon.setHours(0, 0, 0, 0);
+  return isoDate(mon);
 };
 
 // ── Recovery dot color ────────────────────────────────────────
@@ -77,12 +85,19 @@ const CalendarV2: React.FC<CalendarV2Props> = ({ workouts }) => {
   const [month, setMonth] = useState(now.getMonth()); // 0-indexed
   const [selectedDay, setSelectedDay] = useState<DaySummary | null>(null);
 
-  // Build workout map: ISO date → workouts
+  // Build workout map: local ISO date → workouts
+  // Parse via Date so that full timestamps are bucketed by local calendar day.
   const workoutMap = useMemo(() => {
     const map = new Map<string, Workout[]>();
     for (const w of workouts) {
       if (!w.date) continue;
-      const day = w.date.slice(0, 10);
+      // If date is already a plain YYYY-MM-DD string treat it as local midnight
+      // to avoid the UTC-parse shift; otherwise parse normally.
+      const d = w.date.length === 10
+        ? new Date(`${w.date}T00:00:00`)
+        : new Date(w.date);
+      if (Number.isNaN(d.getTime())) continue;
+      const day = isoDate(d);
       if (!map.has(day)) map.set(day, []);
       map.get(day)!.push(w);
     }
@@ -116,11 +131,12 @@ const CalendarV2: React.FC<CalendarV2Props> = ({ workouts }) => {
 
   // Monthly stats
   const monthlyStats = useMemo(() => {
-    const first = new Date(year, month, 1);
-    const last = new Date(year, month + 1, 0);
+    const prefix = `${year}-${String(month + 1).padStart(2, '0')}`;
     const sessions = workouts.filter((w) => {
-      const d = new Date(w.date);
-      return d >= first && d <= last;
+      if (!w.date) return false;
+      const d = w.date.length === 10 ? new Date(`${w.date}T00:00:00`) : new Date(w.date);
+      if (Number.isNaN(d.getTime())) return false;
+      return isoDate(d).startsWith(prefix);
     });
     const totalVol = sessions.reduce((s, w) => s + (w.totalVolume || calcWorkoutVolumeKg(w)), 0);
     return { count: sessions.length, totalVolKg: totalVol };
