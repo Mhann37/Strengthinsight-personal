@@ -258,7 +258,8 @@ const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [dataLoading, setDataLoading] = useState(false);
-  const [view, setView] = useState<V2View>('dashboard');
+  const isV2 = new URLSearchParams(window.location.search).get('v2') === '1';
+  const [view, setView] = useState<AppView | V2View>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
 
@@ -422,16 +423,33 @@ const App: React.FC = () => {
 
   return (
     <UserSettingsProvider userId={user.uid}>
-      <AppShellV2
-        user={user}
-        workouts={workouts}
-        dataLoading={dataLoading}
-        view={view}
-        setView={setView}
-        addWorkouts={addWorkouts}
-        deleteWorkout={deleteWorkout}
-        handleLogout={handleLogout}
-      />
+      {isV2 ? (
+        <AppShellV2
+          user={user}
+          workouts={workouts}
+          dataLoading={dataLoading}
+          view={view as V2View}
+          setView={(v) => setView(v)}
+          addWorkouts={addWorkouts}
+          deleteWorkout={deleteWorkout}
+          handleLogout={handleLogout}
+        />
+      ) : (
+        <AppInner
+          user={user}
+          workouts={workouts}
+          setWorkouts={setWorkouts}
+          dataLoading={dataLoading}
+          setDataLoading={setDataLoading}
+          view={view as AppView}
+          setView={(v) => setView(v)}
+          isSidebarOpen={isSidebarOpen}
+          setIsSidebarOpen={setIsSidebarOpen}
+          addWorkouts={addWorkouts}
+          deleteWorkout={deleteWorkout}
+          handleLogout={handleLogout}
+        />
+      )}
     </UserSettingsProvider>
   );
 };
