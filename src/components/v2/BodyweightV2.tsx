@@ -12,7 +12,7 @@ import { ScaleIcon, PlusIcon, TrashIcon, PencilSquareIcon, CheckIcon, XMarkIcon 
 interface BodyweightV2Props {
   userId: string;
   entries: BodyweightEntry[];
-  onAdd: (weightKg: number, unit: Unit) => Promise<void>;
+  onAdd: (weightKg: number, unit: Unit, date: string) => Promise<void>;
   onUpdate: (id: string, weightKg: number, unit: Unit) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
 }
@@ -20,7 +20,10 @@ interface BodyweightV2Props {
 type TimeRange = '1M' | '3M' | '6M' | '1Y' | 'All';
 
 // ── Helpers ───────────────────────────────────────────────────
-const todayISO = (): string => new Date().toISOString().slice(0, 10);
+const todayISO = (): string => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
 
 const formatDisplayDate = (iso: string): string => {
   const d = new Date(iso + 'T12:00:00'); // avoid timezone shifts
@@ -49,6 +52,7 @@ const BodyweightV2: React.FC<BodyweightV2Props> = ({ entries, onAdd, onUpdate, o
 
   const [inputValue, setInputValue] = useState('');
   const [inputUnit, setInputUnit] = useState<Unit>(unit);
+  const [inputDate, setInputDate] = useState<string>(todayISO());
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState<TimeRange>('3M');
@@ -57,8 +61,8 @@ const BodyweightV2: React.FC<BodyweightV2Props> = ({ entries, onAdd, onUpdate, o
   const [editUnit, setEditUnit] = useState<Unit>(unit);
   const [visibleCount, setVisibleCount] = useState(30);
 
-  // Check if today already has an entry
-  const todayEntry = useMemo(() => entries.find((e) => e.date === todayISO()), [entries]);
+  // Check if the selected date already has an entry
+  const selectedDateEntry = useMemo(() => entries.find((e) => e.date === inputDate), [entries, inputDate]);
 
   // Filter chart entries by time range
   const chartEntries = useMemo(() => {
@@ -84,16 +88,21 @@ const BodyweightV2: React.FC<BodyweightV2Props> = ({ entries, onAdd, onUpdate, o
       setSaveError('Please enter a valid weight.');
       return;
     }
+    if (!inputDate) {
+      setSaveError('Please select a date.');
+      return;
+    }
     const weightKg = toKg(val, inputUnit);
     setSaving(true);
     setSaveError(null);
     try {
-      if (todayEntry) {
-        await onUpdate(todayEntry.id, weightKg, inputUnit);
+      if (selectedDateEntry) {
+        await onUpdate(selectedDateEntry.id, weightKg, inputUnit);
       } else {
-        await onAdd(weightKg, inputUnit);
+        await onAdd(weightKg, inputUnit, inputDate);
       }
       setInputValue('');
+      setInputDate(todayISO());
     } catch {
       setSaveError('Failed to save. Please try again.');
     } finally {
@@ -145,28 +154,36 @@ const BodyweightV2: React.FC<BodyweightV2Props> = ({ entries, onAdd, onUpdate, o
         <div className="flex items-center gap-2 mb-4">
           <ScaleIcon className="w-5 h-5 text-blue-400" />
           <h2 className="text-lg font-bold">
-            {todayEntry ? "Today's Weight (Update)" : "Log Today's Weight"}
+            {selectedDateEntry ? 'Update Weight' : 'Log Weight'}
           </h2>
         </div>
 
-        {todayEntry && (
+        {selectedDateEntry && (
           <p className="text-sm text-slate-400 mb-4">
-            Current:{' '}
+            Existing entry:{' '}
             <span className="font-bold text-white">
-              {Math.round(fromKg(todayEntry.weight, unit) * 10) / 10} {unit}
+              {Math.round(fromKg(selectedDateEntry.weight, unit) * 10) / 10} {unit}
             </span>
           </p>
         )}
 
-        <div className="flex gap-2 items-start">
-          <div className="flex-1">
+        <div className="flex gap-2 items-start flex-wrap sm:flex-nowrap">
+          {/* Date picker */}
+          <input
+            type="date"
+            value={inputDate}
+            max={todayISO()}
+            onChange={(e) => setInputDate(e.target.value)}
+            className="bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500 text-sm shrink-0 [color-scheme:dark]"
+          />
+          <div className="flex-1 min-w-0">
             <input
               type="number"
               inputMode="decimal"
               step="0.1"
               min="1"
               max="500"
-              placeholder={todayEntry ? `Update from ${Math.round(fromKg(todayEntry.weight, unit) * 10) / 10}` : 'e.g. 82.5'}
+              placeholder={selectedDateEntry ? `Update from ${Math.round(fromKg(selectedDateEntry.weight, unit) * 10) / 10}` : 'e.g. 82.5'}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSave()}
@@ -195,7 +212,7 @@ const BodyweightV2: React.FC<BodyweightV2Props> = ({ entries, onAdd, onUpdate, o
             ) : (
               <PlusIcon className="w-4 h-4" />
             )}
-            <span className="hidden sm:inline">{todayEntry ? 'Update' : 'Log'}</span>
+            <span className="hidden sm:inline">{selectedDateEntry ? 'Update' : 'Log'}</span>
           </button>
         </div>
 

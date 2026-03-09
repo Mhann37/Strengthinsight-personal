@@ -174,22 +174,41 @@ const AppShellV2: React.FC<AppShellV2Props> = ({
 
   const latestBodyweightKg = bodyweightEntries.length > 0 ? bodyweightEntries[0].weight : undefined;
 
-  const handleAddBodyweight = async (weightKg: number, bwUnit: Unit) => {
-    const today = new Date().toISOString().slice(0, 10);
+  const handleAddBodyweight = async (weightKg: number, bwUnit: Unit, date: string) => {
+    // Optimistic update — show immediately without waiting for onSnapshot
+    const optimisticEntry: BodyweightEntry = {
+      id: `optimistic-${date}`,
+      userId: user.uid,
+      date,
+      weight: weightKg,
+      unit: bwUnit,
+      createdAt: new Date().toISOString(),
+    };
+    setBodyweightEntries((prev) => {
+      const next = [optimisticEntry, ...prev.filter((e) => e.date !== date)];
+      next.sort((a, b) => b.date.localeCompare(a.date));
+      return next;
+    });
     await addDoc(collection(db, 'bodyweight'), {
       userId: user.uid,
-      date: today,
+      date,
       weight: weightKg,
       unit: bwUnit,
       createdAt: new Date().toISOString(),
     });
+    // onSnapshot will replace the optimistic entry with the real one
   };
 
   const handleUpdateBodyweight = async (id: string, weightKg: number, bwUnit: Unit) => {
+    // Optimistic update
+    setBodyweightEntries((prev) =>
+      prev.map((e) => e.id === id ? { ...e, weight: weightKg, unit: bwUnit } : e)
+    );
     await setDoc(doc(db, 'bodyweight', id), { weight: weightKg, unit: bwUnit }, { merge: true });
   };
 
   const handleDeleteBodyweight = async (id: string) => {
+    setBodyweightEntries((prev) => prev.filter((e) => e.id !== id));
     await deleteDoc(doc(db, 'bodyweight', id));
   };
 
