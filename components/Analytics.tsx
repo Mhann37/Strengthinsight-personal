@@ -32,7 +32,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ workouts }) => {
   }, [workouts]);
 
   // Set initial selected exercise if none selected
-  React.useEffect(() => {
+  useMemo(() => {
     if (!selectedExercise && exerciseNames.length > 0) {
       setSelectedExercise(exerciseNames[0]);
     }
