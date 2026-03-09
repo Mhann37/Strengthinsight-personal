@@ -16,6 +16,8 @@ import {
 } from './firebase';
 import { AppView, Workout } from './types';
 import { trackEvent } from './analytics';
+import AppShellV2 from './src/components/v2/AppShellV2';
+import type { V2View } from './src/components/v2/AppShellV2';
 import Dashboard from './components/Dashboard';
 import Uploader from './components/Uploader';
 import History from './components/History';
@@ -256,7 +258,7 @@ const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [dataLoading, setDataLoading] = useState(false);
-  const [view, setView] = useState<AppView>('dashboard');
+  const [view, setView] = useState<V2View>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
 
@@ -420,16 +422,12 @@ const App: React.FC = () => {
 
   return (
     <UserSettingsProvider userId={user.uid}>
-      <AppInner
+      <AppShellV2
         user={user}
         workouts={workouts}
-        setWorkouts={setWorkouts}
         dataLoading={dataLoading}
-        setDataLoading={setDataLoading}
         view={view}
         setView={setView}
-        isSidebarOpen={isSidebarOpen}
-        setIsSidebarOpen={setIsSidebarOpen}
         addWorkouts={addWorkouts}
         deleteWorkout={deleteWorkout}
         handleLogout={handleLogout}

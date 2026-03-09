@@ -888,14 +888,6 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
           />
         </div>
       </section>
-
-      <style>{`
-        @keyframes shake {
-          0%, 100% { transform: translateX(-50%) rotate(0deg); }
-          25% { transform: translateX(-51%) rotate(-1deg); }
-          75% { transform: translateX(-49%) rotate(1deg); }
-        }
-      `}</style>
     </div>
   );
 };
