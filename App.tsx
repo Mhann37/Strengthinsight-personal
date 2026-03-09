@@ -16,8 +16,6 @@ import {
 } from './firebase';
 import { AppView, Workout } from './types';
 import { trackEvent } from './analytics';
-import AppShellV2 from './src/components/v2/AppShellV2';
-import type { V2View } from './src/components/v2/AppShellV2';
 import Dashboard from './components/Dashboard';
 import Uploader from './components/Uploader';
 import History from './components/History';
@@ -258,8 +256,7 @@ const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [dataLoading, setDataLoading] = useState(false);
-  const isV2 = new URLSearchParams(window.location.search).get('v2') === '1';
-  const [view, setView] = useState<AppView | V2View>('dashboard');
+  const [view, setView] = useState<AppView>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
 
@@ -423,33 +420,20 @@ const App: React.FC = () => {
 
   return (
     <UserSettingsProvider userId={user.uid}>
-      {isV2 ? (
-        <AppShellV2
-          user={user}
-          workouts={workouts}
-          dataLoading={dataLoading}
-          view={view as V2View}
-          setView={(v) => setView(v)}
-          addWorkouts={addWorkouts}
-          deleteWorkout={deleteWorkout}
-          handleLogout={handleLogout}
-        />
-      ) : (
-        <AppInner
-          user={user}
-          workouts={workouts}
-          setWorkouts={setWorkouts}
-          dataLoading={dataLoading}
-          setDataLoading={setDataLoading}
-          view={view as AppView}
-          setView={(v) => setView(v)}
-          isSidebarOpen={isSidebarOpen}
-          setIsSidebarOpen={setIsSidebarOpen}
-          addWorkouts={addWorkouts}
-          deleteWorkout={deleteWorkout}
-          handleLogout={handleLogout}
-        />
-      )}
+      <AppInner
+        user={user}
+        workouts={workouts}
+        setWorkouts={setWorkouts}
+        dataLoading={dataLoading}
+        setDataLoading={setDataLoading}
+        view={view}
+        setView={setView}
+        isSidebarOpen={isSidebarOpen}
+        setIsSidebarOpen={setIsSidebarOpen}
+        addWorkouts={addWorkouts}
+        deleteWorkout={deleteWorkout}
+        handleLogout={handleLogout}
+      />
     </UserSettingsProvider>
   );
 };
