@@ -19,6 +19,20 @@ export interface Workout {
   date: string; // ISO string
   totalVolume: number;
   exercises: Exercise[];
+  // Optional session context fields
+  notes?: string;          // free-text session note
+  rpe?: number;            // 1–10 perceived effort
+  recoveryScore?: number;  // 0–100 manually entered WHOOP recovery %
+  source?: 'whoop' | 'hevy' | 'manual';
+}
+
+export interface BodyweightEntry {
+  id: string;
+  userId: string;
+  date: string;        // ISO format YYYY-MM-DD, one entry per calendar day
+  weight: number;      // canonical KG
+  unit: 'kg' | 'lbs'; // user's preferred unit at time of entry
+  createdAt: string;
 }
 
 export type AppView = 'dashboard' | 'upload' | 'history' | 'analytics' | 'export' | 'muscleGroups';
