@@ -289,7 +289,7 @@ export const processWorkoutScreenshots = onCall(
       }
 
       const ai = new GoogleGenAI({ apiKey });
-      const model = "gemini-3-flash-preview";
+      const model = "gemini-2.0-flash";
 
       // E. Construct Prompt
       const promptText = `
