@@ -377,10 +377,13 @@ function validateResponse(data: any): GeneratedWorkout {
 // ── JSON safety net ───────────────────────────────────────────
 function safeParseWorkoutJSON(raw: string): any {
   let cleaned = raw.trim()
-    .replace(/^```json\n?/, '')
-    .replace(/^```\n?/, '')
-    .replace(/\n?```$/, '')
+    .replace(/^```json\s*/i, '')
+    .replace(/^```\s*/i, '')
+    .replace(/\s*```$/i, '')
     .trim();
+
+  console.info('[generateNextWorkout] cleaned response first 50 chars:', cleaned.substring(0, 50));
+
   if (!cleaned.endsWith('}')) {
     const lastBrace = cleaned.lastIndexOf('}');
     if (lastBrace > 0) {
@@ -454,12 +457,33 @@ export const generateNextWorkout = onCall(
 
       // Pre-process all data — Gemini only sees a compact summary
       const athleteSummary = await buildAthleteSummary(uid);
-      const prompt = buildPrompt(athleteSummary);
+
+      // Trim to 6 exercises with only the fields Gemini needs
+      const trimmedExercises = athleteSummary.exercises
+        .slice(0, 6)
+        .map((e) => ({
+          name: e.name,
+          last_trained_days_ago: e.last_trained_days_ago,
+          suggested_weight_kg: e.suggested_weight_kg,
+          last_sets: e.last_sets,
+          last_reps: e.last_reps,
+          trend: e.trend,
+          plateau: e.plateau,
+        }));
+
+      const compactSummary = {
+        days_since_last: athleteSummary.days_since_last_session,
+        recovery_score: athleteSummary.recovery_score,
+        recent_muscle_groups: athleteSummary.recently_trained_muscle_groups,
+        exercises: trimmedExercises,
+      };
+
+      const prompt = buildPrompt(compactSummary as any);
 
       console.info("[generateNextWorkout] prompt length", {
         requestId,
         chars: prompt.length,
-        exercises: athleteSummary.exercises.length,
+        exercises: trimmedExercises.length,
       });
 
       const ai = new GoogleGenAI({ apiKey });
@@ -499,6 +523,11 @@ export const generateNextWorkout = onCall(
       if (!text) {
         throw new Error("AI returned empty response.");
       }
+
+      console.info("[generateNextWorkout] raw gemini response", {
+        requestId,
+        first100chars: text.substring(0, 100),
+      });
 
       const data = validateResponse(safeParseWorkoutJSON(text));
       return data;
