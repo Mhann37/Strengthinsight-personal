@@ -497,7 +497,7 @@ export const generateNextWorkout = onCall(
             responseMimeType: "application/json",
             temperature: 0.3,
             topP: 0.8,
-            maxOutputTokens: 800,
+            maxOutputTokens: 1200,
           },
         });
 
