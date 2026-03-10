@@ -498,6 +498,7 @@ export const generateNextWorkout = onCall(
             temperature: 0.3,
             topP: 0.8,
             maxOutputTokens: 2000,
+            thinkingConfig: { thinkingBudget: 0 },
           },
         });
 
@@ -518,6 +519,13 @@ export const generateNextWorkout = onCall(
         await sleep(delay);
         response = await generate();
       }
+
+      // Post-call verification log (confirms thinkingBudget=0 freed up output tokens)
+      console.info("[generateNextWorkout] gemini result", {
+        requestId,
+        finishReason: response?.candidates?.[0]?.finishReason,
+        textLength: response?.candidates?.[0]?.content?.parts?.[0]?.text?.length ?? 0,
+      });
 
       // Log candidates for diagnosis (finishReason reveals MAX_TOKENS / SAFETY / etc.)
       const candidate = response?.candidates?.[0];
