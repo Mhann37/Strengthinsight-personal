@@ -13,9 +13,9 @@ import OnboardingOverlay from './OnboardingOverlay';
 import UploadWrapperV2 from './UploadWrapperV2';
 import BodyweightV2 from './BodyweightV2';
 import CalendarV2 from './CalendarV2';
+import HistoryV2 from './HistoryV2';
 
 // V1 components reused in V2
-import History from '../../../components/History';
 import MuscleGroups from '../../../components/MuscleGroups';
 import DataExport from '../../../components/DataExport';
 
@@ -374,7 +374,7 @@ const AppShellV2: React.FC<AppShellV2Props> = ({
               {view === 'upload' && <UploadWrapperV2 onWorkoutsExtracted={addWorkouts} existingWorkouts={workouts} />}
               {view === 'analytics' && <ProgressionV2 workouts={workouts} latestBodyweightKg={latestBodyweightKg} setView={setView} />}
               {view === 'muscleGroups' && <MuscleGroups workouts={workouts} />}
-              {view === 'history' && <History workouts={workouts} onDelete={deleteWorkout} />}
+              {view === 'history' && <HistoryV2 workouts={workouts} onDelete={deleteWorkout} />}
               {view === 'export' && <DataExport workouts={workouts} />}
               {view === 'settings' && <SettingsV2 user={user} unit={unit} setUnit={setUnit} isLoading={isSettingsLoading} workouts={workouts} onLogout={handleLogout} />}
               {view === 'calendar' && <CalendarV2 workouts={workouts} />}

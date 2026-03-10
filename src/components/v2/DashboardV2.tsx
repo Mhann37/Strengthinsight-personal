@@ -3,6 +3,7 @@ import { Workout } from '../../../types';
 import { useUserSettings } from '../../../contexts/UserSettingsContext';
 import { fromKg, toKg, normalizeUnit, calcWorkoutVolumeKg } from '../../../utils/unit';
 import { trackEvent } from '../../../analytics';
+import { getSessionFocusClassification, type FocusClassification } from '../../utils/analyticsCalculations';
 import WeeklyHeatMap from '../../../components/WeeklyHeatMap';
 import InsightsPanel from '../../../components/InsightsPanel';
 import ShareCardCanvas from './ShareCardCanvas';
@@ -535,6 +536,34 @@ const MonthlySummaryCard: React.FC<{ workouts: Workout[]; unit: string }> = ({ w
               )}
             </div>
           )}
+
+          {/* Feature 5 — Training Focus Classification */}
+          {(() => {
+            const counts: Record<FocusClassification, number> = { Strength: 0, Hypertrophy: 0, Endurance: 0, Mixed: 0 };
+            currWorkouts.forEach((w) => { counts[getSessionFocusClassification(w)]++; });
+            const sorted = (Object.entries(counts) as [FocusClassification, number][])
+              .filter(([, n]) => n > 0)
+              .sort((a, b) => b[1] - a[1]);
+            if (sorted.length === 0) return null;
+            const allSame = sorted.length === 1;
+            return (
+              <p className="text-sm text-slate-400">
+                {allSame
+                  ? <>Focus: <span className="font-bold text-slate-200">{sorted[0][0]}</span></>
+                  : <>
+                      Primary focus:{' '}
+                      {sorted.slice(0, 2).map(([fc, n], i) => (
+                        <React.Fragment key={fc}>
+                          {i > 0 && <span className="text-slate-600"> / </span>}
+                          <span className="font-bold text-slate-200">{fc}</span>
+                          <span className="text-slate-500"> ({n})</span>
+                        </React.Fragment>
+                      ))}
+                    </>
+                }
+              </p>
+            );
+          })()}
         </div>
       )}
     </div>
