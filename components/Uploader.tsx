@@ -157,6 +157,7 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
     const files = Array.from(e.target.files || []) as File[];
     if (files.length === 0) return;
 
+    trackEvent('upload_initiated', { source: 'screenshot' });
     setError(null);
     setSaveError(null);
 
@@ -453,7 +454,9 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
 
       await onWorkoutsExtracted(finalized);
 
+      const screenshotExerciseCount = finalized.reduce((sum, w) => sum + (w.exercises?.length || 0), 0);
       trackEvent('workouts_saved', { workout_count: finalized.length });
+      trackEvent('upload_complete', { source: 'screenshot', exercise_count: screenshotExerciseCount });
 
       setPendingWorkouts(null);
       setSelectedFiles([]);
@@ -487,24 +490,24 @@ const Uploader: React.FC<UploaderProps> = ({ onWorkoutsExtracted }) => {
           </div>
           <h1 className="text-4xl font-extrabold tracking-tight">Select Platform</h1>
           <p className="text-slate-400 text-lg max-w-lg mx-auto">
-            Choose the companion app you use to track your strength training screenshots.
+            Choose the app you log your strength sessions in.
           </p>
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <button
-            onClick={() => setSelectedPlatform('whoop')}
+            onClick={() => { setSelectedPlatform('whoop'); trackEvent('platform_selected', { platform: 'whoop_hevy' }); }}
             className="group relative bg-slate-900 border-2 border-slate-800 p-8 rounded-[2.5rem] text-left transition-all hover:border-blue-500/50 hover:bg-slate-800/50 hover:shadow-2xl hover:shadow-blue-500/10 active:scale-[0.98]"
           >
             <div className="flex items-center justify-between mb-6">
               <div className="w-16 h-16 bg-blue-600/20 rounded-2xl flex items-center justify-center font-black text-blue-500 text-2xl group-hover:scale-110 transition-transform">
-                W
+                W/H
               </div>
               <SparklesIcon className="w-6 h-6 text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
-            <h3 className="text-2xl font-bold mb-2">Whoop</h3>
+            <h3 className="text-2xl font-bold mb-2">WHOOP / Hevy</h3>
             <p className="text-slate-400 text-sm leading-relaxed">
-              Fully supported. Analyzes Strength Trainer screenshots for reps, sets, and muscle strain.
+              Fully supported. Upload screenshots from WHOOP Strength Trainer or Hevy — AI extracts your sets, reps, and weights.
             </p>
           </button>
 

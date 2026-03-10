@@ -231,7 +231,7 @@ const AppShellV2: React.FC<AppShellV2Props> = ({
   const handleNavClick = (id: V2View) => {
     setView(id);
     setIsSidebarOpen(false);
-    if (id === 'analytics') trackEvent('view_analytics_opened', { workout_count: workouts.length });
+    if (id === 'analytics') { trackEvent('view_analytics_opened', { workout_count: workouts.length }); trackEvent('progression_viewed'); }
     if (id === 'history') trackEvent('view_history_opened', { workout_count: workouts.length });
   };
 
