@@ -5,7 +5,6 @@ import {
   ChartBarIcon,
   ArrowUpTrayIcon,
   SparklesIcon,
-  ShieldCheckIcon,
   LockClosedIcon,
   ArrowRightIcon,
 } from '@heroicons/react/24/solid';
@@ -28,7 +27,7 @@ const Login: React.FC = () => {
   };
 
   // A simple CTA label helper for consistent copy
-  const ctaLabel = useMemo(() => (loading ? 'Signing in…' : 'Try it free (beta)'), [loading]);
+  const ctaLabel = useMemo(() => (loading ? 'Signing in…' : 'Try it free'), [loading]);
 
   return (
     <div className="min-h-screen bg-slate-950 selection:bg-blue-500/30">
@@ -51,18 +50,15 @@ const Login: React.FC = () => {
               />
               <div>
                 <div className="text-white font-extrabold tracking-tight text-xl">StrengthInsight</div>
-                <div className="text-slate-500 text-sm">Independent WHOOP companion (not affiliated)</div>
               </div>
             </div>
 
             <div className="space-y-4">
               <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-white leading-[1.05]">
-                WHOOP Strength Trainer Analysis — Track Strength Progression Beyond Strain
+                Your workout app tracks effort. StrengthInsight tracks progress.
               </h1>
               <p className="text-slate-300 text-lg leading-relaxed max-w-xl">
-                WHOOP is great for effort. StrengthInsight helps you track <span className="text-white font-semibold">progression</span>,{' '}
-                <span className="text-white font-semibold">volume</span>, and <span className="text-white font-semibold">lift history</span> by
-                extracting sets, reps, and weight from your screenshots — no API access and no manual entry.
+                Upload screenshots from WHOOP or Hevy. AI reads your sets, reps, and weights — then shows you the lift history and progression trends your app doesn't.
               </p>
             </div>
 
@@ -116,10 +112,6 @@ const Login: React.FC = () => {
                 Secure Google login
               </div>
               <div className="inline-flex items-center gap-2">
-                <ShieldCheckIcon className="w-4 h-4 text-slate-500" />
-                Built as a companion tool
-              </div>
-              <div className="inline-flex items-center gap-2">
                 <SparklesIcon className="w-4 h-4 text-slate-500" />
                 Free while in beta
               </div>
@@ -142,7 +134,7 @@ const Login: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="font-bold text-sm text-slate-200">Upload screenshots</h3>
-                  <p className="text-xs text-slate-500">No manual entry. Just your WHOOP Strength Trainer screens.</p>
+                  <p className="text-xs text-slate-500">No manual entry. Works with WHOOP Strength Trainer and Hevy.</p>
                 </div>
               </div>
 
@@ -235,13 +227,12 @@ const Login: React.FC = () => {
 
       {/* Scroll sections */}
       <div id="how-it-works" className="relative z-10 max-w-6xl mx-auto px-6 pb-24">
-        <div className="mt-10 border-t border-slate-800/60 pt-14">
+        <div className="mt-8 border-t border-slate-800/60 pt-8 md:pt-14">
           <h2 className="text-3xl font-extrabold tracking-tight text-white mb-4">
             How StrengthInsight works
           </h2>
           <p className="text-slate-400 text-lg leading-relaxed max-w-3xl">
-            WHOOP doesn’t currently expose per-exercise Strength Trainer data via API. StrengthInsight uses screenshots so you can
-            still track progression and volume over time.
+            Most workout apps don’t show you per-exercise history over time. StrengthInsight uses your screenshots to build the progression view you’re missing.
           </p>
 
           <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -249,7 +240,7 @@ const Login: React.FC = () => {
               <div className="text-blue-400 font-black text-2xl">1</div>
               <h3 className="text-white font-bold mt-2">Upload screenshots</h3>
               <p className="text-slate-400 text-sm mt-2 leading-relaxed">
-                Grab your workout screenshots from WHOOP Strength Trainer — no spreadsheets, no typing.
+                Screenshot your session from WHOOP Strength Trainer or Hevy — no spreadsheets, no typing.
               </p>
             </div>
 
