@@ -7,7 +7,7 @@ import { getFirestore, FieldValue } from "firebase-admin/firestore";
 if (!getApps().length) initializeApp();
 const adminDb = getFirestore();
 
-export { generateNextWorkout } from "./generateNextWorkout";
+export { generateNextWorkout } from "./generateNextWorkout.js";
 
 
 // 1. Configuration
