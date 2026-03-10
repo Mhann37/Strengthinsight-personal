@@ -8,6 +8,14 @@ import {
 } from 'recharts';
 import { TrophyIcon, LockClosedIcon } from '@heroicons/react/24/solid';
 import { ArrowUpTrayIcon, ScaleIcon } from '@heroicons/react/24/outline';
+import {
+  getExerciseProgressStatus,
+  getPRDrought,
+  getPlateauDetection,
+  type ProgressStatus,
+  type PRDroughtResult,
+  type PlateauResult,
+} from '../../utils/analyticsCalculations';
 
 interface ProgressionV2Props {
   workouts: Workout[];
@@ -82,7 +90,8 @@ const LiftRecordsCard: React.FC<{
   est1rmKg: number;
   latestBodyweightKg?: number;
   setView?: (v: string) => void;
-}> = ({ records, exerciseName, unit, est1rmKg, latestBodyweightKg, setView }) => {
+  prDrought: PRDroughtResult | null;
+}> = ({ records, exerciseName, unit, est1rmKg, latestBodyweightKg, setView, prDrought }) => {
   const now = Date.now();
   const benchmark = findBenchmark(exerciseName);
 
@@ -136,6 +145,32 @@ const LiftRecordsCard: React.FC<{
             </div>
           );
         })}
+
+        {/* Feature 2 — PR Drought row */}
+        {prDrought && (
+          <div className="flex items-center justify-between gap-4 px-5 py-3">
+            <div className="min-w-0">
+              <p className="text-xs text-slate-500">Last PR</p>
+              <p className="text-[11px] text-slate-600 mt-0.5">Days since peak load record</p>
+            </div>
+            <div className="text-right shrink-0">
+              <p className="font-bold text-slate-100">
+                {prDrought.isFirstSession
+                  ? 'First session'
+                  : prDrought.isToday
+                  ? 'Today'
+                  : `${prDrought.daysSincePR} day${prDrought.daysSincePR !== 1 ? 's' : ''} ago`}
+              </p>
+              {!prDrought.isFirstSession && !prDrought.isToday && prDrought.daysSincePR >= 7 && (
+                <p className="text-[10px] text-slate-500">
+                  {new Date(prDrought.prDate + 'T00:00:00').toLocaleDateString(undefined, {
+                    day: 'numeric', month: 'short', year: 'numeric',
+                  })}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Relative strength benchmarking */}
@@ -509,6 +544,39 @@ const RecoveryCorrelation: React.FC<{
   );
 };
 
+// ── Feature 1 — Progress Status Badge ────────────────────────
+const PROGRESS_STATUS_CONFIG: Record<
+  Exclude<ProgressStatus, 'not_enough_data'>,
+  { label: string; className: string }
+> = {
+  getting_stronger: {
+    label: '↑ Getting Stronger',
+    className: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20',
+  },
+  plateauing: {
+    label: '→ Plateauing',
+    className: 'bg-amber-500/10 text-amber-400 border border-amber-500/20',
+  },
+  taking_a_dip: {
+    label: '↓ Taking a Dip',
+    className: 'bg-red-500/10 text-red-400/80 border border-red-500/15',
+  },
+};
+
+// ── Feature 4 — Plateau Detection Card ───────────────────────
+const PlateauDetectionCard: React.FC<{
+  exerciseName: string;
+  plateau: PlateauResult;
+}> = ({ exerciseName, plateau }) => (
+  <div className="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-4">
+    <p className="text-[10px] uppercase font-bold text-amber-400 tracking-widest mb-2">💡 Plateau Detected</p>
+    <p className="text-sm text-slate-300 leading-relaxed">
+      Your <span className="font-bold text-slate-100">{exerciseName}</span> has been consistent
+      for {plateau.sessionCount} sessions. {plateau.suggestedAction}.
+    </p>
+  </div>
+);
+
 // ── Main ProgressionV2 ────────────────────────────────────────
 const ProgressionV2: React.FC<ProgressionV2Props> = ({ workouts, latestBodyweightKg, setView }) => {
   const { settings } = useUserSettings();
@@ -692,6 +760,24 @@ const ProgressionV2: React.FC<ProgressionV2Props> = ({ workouts, latestBodyweigh
     ];
   }, [workouts, selectedExercise, unit, exerciseProgressData]);
 
+  // Feature 1 — progress status
+  const progressStatus = useMemo(
+    () => getExerciseProgressStatus(workouts, selectedExercise),
+    [workouts, selectedExercise],
+  );
+
+  // Feature 2 — PR drought
+  const prDrought = useMemo(
+    () => (selectedExercise ? getPRDrought(workouts, selectedExercise) : null),
+    [workouts, selectedExercise],
+  );
+
+  // Feature 4 — plateau detection
+  const plateauDetection = useMemo(
+    () => (selectedExercise ? getPlateauDetection(workouts, selectedExercise) : null),
+    [workouts, selectedExercise],
+  );
+
   const chartConfig: Record<ChartMode, { dataKey: string; name: string; color: string }> = {
     maxWeight: { dataKey: 'maxWeight', name: 'Max Weight', color: '#10b981' },
     volume:    { dataKey: 'volume',    name: 'Volume',     color: '#f59e0b' },
@@ -750,13 +836,22 @@ const ProgressionV2: React.FC<ProgressionV2Props> = ({ workouts, latestBodyweigh
             <p className="text-xs uppercase tracking-widest font-bold text-slate-500">Exercise Breakdown</p>
             <h2 className="text-lg font-bold">Exercise Progression</h2>
           </div>
-          <select
-            value={selectedExercise}
-            onChange={(e) => setSelectedExercise(e.target.value)}
-            className="bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-blue-500 min-w-[200px]"
-          >
-            {exerciseNames.map((name) => <option key={name} value={name}>{name}</option>)}
-          </select>
+          <div className="flex items-center gap-3 flex-wrap">
+            <select
+              value={selectedExercise}
+              onChange={(e) => setSelectedExercise(e.target.value)}
+              className="bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-blue-500 min-w-[200px]"
+            >
+              {exerciseNames.map((name) => <option key={name} value={name}>{name}</option>)}
+            </select>
+
+            {/* Feature 1 — Progress Status Badge */}
+            {progressStatus !== 'not_enough_data' && (
+              <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${PROGRESS_STATUS_CONFIG[progressStatus].className}`}>
+                {PROGRESS_STATUS_CONFIG[progressStatus].label}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* PR Celebration */}
@@ -770,7 +865,7 @@ const ProgressionV2: React.FC<ProgressionV2Props> = ({ workouts, latestBodyweigh
           </div>
         )}
 
-        {/* Feature 4: Lift Records */}
+        {/* Lift Records (with PR Drought row — Feature 2) */}
         {selectedExercise && liftRecords.length > 0 && (
           <div className="mb-6">
             <LiftRecordsCard
@@ -780,7 +875,15 @@ const ProgressionV2: React.FC<ProgressionV2Props> = ({ workouts, latestBodyweigh
               est1rmKg={liftRecords[1]?.valueKg || 0}
               latestBodyweightKg={latestBodyweightKg}
               setView={setView}
+              prDrought={prDrought}
             />
+          </div>
+        )}
+
+        {/* Feature 4 — Plateau Detection Card */}
+        {selectedExercise && plateauDetection && (
+          <div className="mb-6">
+            <PlateauDetectionCard exerciseName={selectedExercise} plateau={plateauDetection} />
           </div>
         )}
 

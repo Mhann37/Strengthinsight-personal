@@ -3,6 +3,127 @@ import { Workout } from '../../../types';
 import { useUserSettings } from '../../../contexts/UserSettingsContext';
 import { fromKg, calcWorkoutVolumeKg } from '../../../utils/unit';
 import { ChevronLeftIcon, ChevronRightIcon, FireIcon } from '@heroicons/react/24/outline';
+import { getActivityHeatmapData, type HeatmapDay } from '../../utils/analyticsCalculations';
+
+// ── Activity Heatmap ──────────────────────────────────────────
+// GitHub-style contribution grid: 52 columns (weeks) × 7 rows (Mon–Sun).
+const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+const cellColor = (count: number): string => {
+  if (count === 0) return 'rgba(30,41,59,0.6)'; // slate-800 muted
+  if (count === 1) return 'rgba(59,130,246,0.30)'; // blue-500 30%
+  if (count === 2) return 'rgba(59,130,246,0.55)'; // blue-500 55%
+  return 'rgba(59,130,246,0.85)';                  // blue-500 85%
+};
+
+const ActivityHeatmap: React.FC<{ workouts: Workout[] }> = ({ workouts }) => {
+  const days: HeatmapDay[] = useMemo(() => getActivityHeatmapData(workouts), [workouts]);
+
+  const todayIso = useMemo(() => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }, []);
+
+  // Group days into 52 columns of 7
+  const weeks: HeatmapDay[][] = useMemo(() => {
+    const result: HeatmapDay[][] = [];
+    for (let i = 0; i < days.length; i += 7) {
+      result.push(days.slice(i, i + 7));
+    }
+    return result;
+  }, [days]);
+
+  // Month labels: collect first column index where a new month starts
+  const monthLabels: { col: number; label: string }[] = useMemo(() => {
+    const seen = new Set<string>();
+    const labels: { col: number; label: string }[] = [];
+    weeks.forEach((week, colIdx) => {
+      for (const day of week) {
+        if (!day.iso) continue;
+        const monthKey = day.iso.slice(0, 7); // YYYY-MM
+        if (!seen.has(monthKey)) {
+          seen.add(monthKey);
+          const monthNum = parseInt(day.iso.slice(5, 7), 10) - 1;
+          labels.push({ col: colIdx, label: MONTH_ABBR[monthNum] });
+        }
+      }
+    });
+    return labels;
+  }, [weeks]);
+
+  if (days.length === 0) return null;
+
+  return (
+    <section className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+      <div className="mb-4">
+        <p className="text-xs uppercase tracking-widest font-bold text-slate-500 mb-0.5">Training Consistency</p>
+        <p className="text-sm text-slate-400">Last 12 months</p>
+      </div>
+
+      {/* Outer scroll container for mobile */}
+      <div className="overflow-x-auto">
+        <div style={{ minWidth: `${52 * 12}px` }}>
+          {/* Month labels row */}
+          <div className="flex mb-1" style={{ gap: '2px' }}>
+            {weeks.map((_, colIdx) => {
+              const lbl = monthLabels.find((l) => l.col === colIdx);
+              return (
+                <div
+                  key={colIdx}
+                  style={{ width: '10px', flexShrink: 0 }}
+                  className="text-[8px] text-slate-500 font-bold"
+                >
+                  {lbl ? lbl.label : ''}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Grid: 7 rows × 52 cols */}
+          <div className="flex" style={{ gap: '2px' }}>
+            {weeks.map((week, colIdx) => (
+              <div key={colIdx} className="flex flex-col" style={{ gap: '2px' }}>
+                {week.map((day, rowIdx) => {
+                  const isToday = day.iso === todayIso;
+                  return (
+                    <div
+                      key={rowIdx}
+                      title={`${day.iso} — ${day.count} session${day.count !== 1 ? 's' : ''}`}
+                      style={{
+                        width: '10px',
+                        height: '10px',
+                        borderRadius: '2px',
+                        backgroundColor: cellColor(day.count),
+                        outline: isToday ? '1.5px solid rgba(59,130,246,0.8)' : undefined,
+                        outlineOffset: isToday ? '0px' : undefined,
+                        flexShrink: 0,
+                      }}
+                    />
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Colour legend */}
+      <div className="flex items-center gap-2 mt-3">
+        <span className="text-[10px] text-slate-500">Less</span>
+        {[0, 1, 2, 3].map((n) => (
+          <div
+            key={n}
+            style={{ width: '10px', height: '10px', borderRadius: '2px', backgroundColor: cellColor(n), flexShrink: 0 }}
+          />
+        ))}
+        <span className="text-[10px] text-slate-500">More</span>
+      </div>
+    </section>
+  );
+};
 
 interface CalendarV2Props {
   workouts: Workout[];
@@ -215,6 +336,9 @@ const CalendarV2: React.FC<CalendarV2Props> = ({ workouts }) => {
           <p className="font-bold text-white">📅 {sessionsThisMonth} session{sessionsThisMonth !== 1 ? 's' : ''}</p>
         </div>
       </div>
+
+      {/* Feature 3 — Activity Heatmap */}
+      <ActivityHeatmap workouts={workouts} />
 
       {/* Calendar */}
       <section className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
