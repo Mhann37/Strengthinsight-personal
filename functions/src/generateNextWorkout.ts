@@ -342,7 +342,7 @@ OUTPUT RULES:
 - estimated_volume_kg: calculate as sum of (sets × reps × weight_kg) across all exercises
 - focus: one of "Upper Strength", "Lower Strength", "Upper Hypertrophy", "Lower Hypertrophy", "Full Body"
 
-Respond ONLY with this JSON object. No preamble, no explanation, no markdown backticks:
+Output this JSON schema:
 {"focus":"","exercises":[{"name":"","sets":0,"reps":0,"weight_kg":0,"progression_note":"","progression_direction":""}],"estimated_volume_kg":0,"coach_note":""}`;
 }
 
