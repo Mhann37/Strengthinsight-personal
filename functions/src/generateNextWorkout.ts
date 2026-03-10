@@ -374,6 +374,25 @@ function validateResponse(data: any): GeneratedWorkout {
   return data as GeneratedWorkout;
 }
 
+// ── JSON safety net ───────────────────────────────────────────
+function safeParseWorkoutJSON(raw: string): any {
+  let cleaned = raw.trim()
+    .replace(/^```json\n?/, '')
+    .replace(/^```\n?/, '')
+    .replace(/\n?```$/, '')
+    .trim();
+  if (!cleaned.endsWith('}')) {
+    const lastBrace = cleaned.lastIndexOf('}');
+    if (lastBrace > 0) {
+      cleaned = cleaned.substring(0, lastBrace + 1);
+      const openBrackets = (cleaned.match(/\[/g) || []).length;
+      const closeBrackets = (cleaned.match(/\]/g) || []).length;
+      if (openBrackets > closeBrackets) cleaned += ']}';
+    }
+  }
+  return JSON.parse(cleaned);
+}
+
 // ── Cloud Function ─────────────────────────────────────────────
 export const generateNextWorkout = onCall(
   {
@@ -454,7 +473,7 @@ export const generateNextWorkout = onCall(
             responseMimeType: "application/json",
             temperature: 0.3,
             topP: 0.8,
-            maxOutputTokens: 400,
+            maxOutputTokens: 800,
           },
         });
 
@@ -481,7 +500,7 @@ export const generateNextWorkout = onCall(
         throw new Error("AI returned empty response.");
       }
 
-      const data = validateResponse(JSON.parse(text));
+      const data = validateResponse(safeParseWorkoutJSON(text));
       return data;
     } catch (error: any) {
       console.error("[generateNextWorkout] error", {
