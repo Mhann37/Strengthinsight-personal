@@ -519,9 +519,20 @@ export const generateNextWorkout = onCall(
         response = await generate();
       }
 
+      // Log candidates for diagnosis (finishReason reveals MAX_TOKENS / SAFETY / etc.)
+      const candidate = response?.candidates?.[0];
+      console.info("[generateNextWorkout] gemini candidates", {
+        requestId,
+        candidateCount: response?.candidates?.length,
+        finishReason: candidate?.finishReason,
+        safetyRatings: candidate?.safetyRatings,
+        hasText: !!candidate?.content?.parts?.[0]?.text,
+        textLength: candidate?.content?.parts?.[0]?.text?.length ?? 0,
+      });
+
       const text = response?.text;
       if (!text) {
-        throw new Error("AI returned empty response.");
+        throw new Error(`Empty Gemini response. FinishReason: ${candidate?.finishReason}`);
       }
 
       console.info("[generateNextWorkout] raw gemini response", {
