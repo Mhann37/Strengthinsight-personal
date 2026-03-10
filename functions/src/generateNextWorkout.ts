@@ -497,7 +497,7 @@ export const generateNextWorkout = onCall(
             responseMimeType: "application/json",
             temperature: 0.3,
             topP: 0.8,
-            maxOutputTokens: 1200,
+            maxOutputTokens: 2000,
           },
         });
 
@@ -526,6 +526,7 @@ export const generateNextWorkout = onCall(
 
       console.info("[generateNextWorkout] raw gemini response", {
         requestId,
+        chars: text.length,
         first100chars: text.substring(0, 100),
       });
 
