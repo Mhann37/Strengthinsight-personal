@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback, useState } from 'react';
+import React, { useMemo, useCallback, useState, useEffect } from 'react';
 import { Workout } from '../../../types';
 import { useUserSettings } from '../../../contexts/UserSettingsContext';
 import { fromKg, toKg, normalizeUnit, calcWorkoutVolumeKg } from '../../../utils/unit';
@@ -561,6 +561,8 @@ const DashboardV2: React.FC<DashboardV2Props> = ({ workouts, userName, setView }
   const streak = useMemo(() => calcStreak(workouts), [workouts]);
   const prs = useMemo(() => computePRs(workouts), [workouts]);
 
+  useEffect(() => { trackEvent('dashboard_viewed'); }, []);
+
   const volumeTrend = useMemo(() => {
     const now = new Date();
     const oneWeekAgo = new Date(now.getTime() - 7 * 86_400_000);
@@ -743,6 +745,9 @@ const DashboardV2: React.FC<DashboardV2Props> = ({ workouts, userName, setView }
         </section>
       )}
 
+      {/* Monthly Summary (Feature 9) — directly below PR strip */}
+      <MonthlySummaryCard workouts={workouts} unit={unit} />
+
       {/* Volume Distribution Radar (Feature 8) */}
       {workouts.length > 0 && <VolumeRadarCard workouts={workouts} unit={unit} />}
 
@@ -816,9 +821,6 @@ const DashboardV2: React.FC<DashboardV2Props> = ({ workouts, userName, setView }
 
       {/* Coach Insight */}
       <InsightsPanel workouts={workouts} />
-
-      {/* Monthly Summary (Feature 9) */}
-      <MonthlySummaryCard workouts={workouts} unit={unit} />
 
       {/* Share Card Modal */}
       {showShareCard && (

@@ -109,6 +109,7 @@ const HevyImporter: React.FC<HevyImporterProps> = ({ onWorkoutsExtracted, existi
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    trackEvent('upload_initiated', { source: 'hevy_csv' });
     setError(null);
     setSessions(null);
     setSavedCount(0);
@@ -257,6 +258,7 @@ const HevyImporter: React.FC<HevyImporterProps> = ({ onWorkoutsExtracted, existi
     const toImport = sessions.filter((s) => s.selected && s.status === 'ready');
     if (toImport.length === 0) return;
 
+    const csvExerciseCount = toImport.reduce((sum, s) => sum + (s.workout.exercises?.length || 0), 0);
     setSaving(true);
     setError(null);
     let saved = 0;
@@ -290,6 +292,7 @@ const HevyImporter: React.FC<HevyImporterProps> = ({ onWorkoutsExtracted, existi
     setSavedCount(saved);
     setSaving(false);
     trackEvent('hevy_import_saved', { imported_count: saved });
+    trackEvent('upload_complete', { source: 'hevy_csv', exercise_count: csvExerciseCount });
   };
 
   const displayUnit = settings.unit;
