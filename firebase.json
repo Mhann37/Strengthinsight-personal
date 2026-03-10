@@ -24,6 +24,13 @@
       "**/.*",
       "**/node_modules/**"
     ],
+    "redirects": [
+      {
+        "source": "/:path*",
+        "destination": "https://strengthinsight.app/:path*",
+        "type": 301
+      }
+    ],
     "rewrites": [
       {
         "source": "**",
