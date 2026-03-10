@@ -11,7 +11,7 @@ export default function Home() {
           name="description"
           content="Extract sets, reps & weights from WHOOP Strength Trainer screenshots to track volume, progression & muscle group trends."
         />
-        <link rel="canonical" href="https://www.strengthinsight.app/" />
+        <link rel="canonical" href="https://strengthinsight.app/" />
 
         {/* Open Graph */}
         <meta property="og:title" content="StrengthInsight — Analyse Your WHOOP Strength Workouts" />
@@ -19,7 +19,7 @@ export default function Home() {
           property="og:description"
           content="Upload WHOOP Strength Trainer screenshots. StrengthInsight extracts sets, reps & weights so you can see real progression."
         />
-        <meta property="og:url" content="https://www.strengthinsight.app/" />
+        <meta property="og:url" content="https://strengthinsight.app/" />
         <meta property="og:type" content="website" />
 
         {/* Twitter */}

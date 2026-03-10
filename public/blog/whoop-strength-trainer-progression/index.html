@@ -4,39 +4,75 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
 
-    <title>How to See WHOOP Strength Trainer Progression (and Track Improvements Over Time)</title>
+    <title>How to Track Strength Progression with WHOOP Strength Trainer | StrengthInsight</title>
     <meta
       name="description"
-      content="Learn what WHOOP Strength Trainer shows (and what it doesn’t), plus practical ways to track strength progression across weeks and months using your workout history."
+      content="WHOOP Strength Trainer tracks your sessions — but doesn't show exercise-by-exercise progression. Here's how to fix that and finally see if you're getting stronger."
     />
     <link rel="canonical" href="https://strengthinsight.app/blog/whoop-strength-trainer-progression/" />
 
     <!-- Open Graph -->
     <meta property="og:type" content="article" />
-    <meta property="og:title" content="How to See WHOOP Strength Trainer Progression" />
+    <meta property="og:title" content="How to Track Strength Progression with WHOOP Strength Trainer | StrengthInsight" />
     <meta
       property="og:description"
-      content="Practical ways to track progression across weeks and months using WHOOP Strength Trainer workout history."
+      content="WHOOP Strength Trainer tracks your sessions — but doesn't show exercise-by-exercise progression. Here's how to fix that and finally see if you're getting stronger."
     />
-    <meta property="og:url" content="https://www.strengthinsight.app/blog/whoop-strength-trainer-progression/" />
+    <meta property="og:url" content="https://strengthinsight.app/blog/whoop-strength-trainer-progression/" />
+    <meta property="og:site_name" content="StrengthInsight" />
 
-    <!-- Basic styling that matches your dark theme without pulling in app CSS -->
+    <!-- Article schema -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Article",
+      "headline": "How to Track Strength Progression with WHOOP Strength Trainer",
+      "description": "WHOOP Strength Trainer tracks your sessions — but doesn't show exercise-by-exercise progression. Here's how to fix that.",
+      "url": "https://strengthinsight.app/blog/whoop-strength-trainer-progression/",
+      "publisher": {
+        "@type": "Organization",
+        "name": "StrengthInsight",
+        "url": "https://strengthinsight.app"
+      }
+    }
+    </script>
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-PM2Z0X11RC"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-PM2Z0X11RC');
+    </script>
+
     <style>
       :root { color-scheme: dark; }
       body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; background:#070b16; color:#e5e7eb; }
-      .wrap { max-width: 880px; margin: 0 auto; padding: 40px 20px 64px; }
+      .wrap { max-width: 720px; margin: 0 auto; padding: 40px 20px 80px; }
       a { color:#60a5fa; text-decoration:none; }
       a:hover { text-decoration:underline; }
-      .card { background: rgba(15,23,42,.7); border: 1px solid rgba(51,65,85,.6); border-radius: 24px; padding: 22px; }
-      h1 { font-size: 34px; line-height: 1.1; margin: 0 0 12px; }
-      h2 { font-size: 22px; margin: 28px 0 10px; }
-      p, li { line-height: 1.7; color: rgba(226,232,240,.92); }
+      .card { background: rgba(15,23,42,.7); border: 1px solid rgba(51,65,85,.6); border-radius: 24px; padding: 28px 32px; }
+      h1 { font-size: 32px; line-height: 1.15; margin: 0 0 14px; }
+      h2 { font-size: 20px; margin: 36px 0 10px; color: #f1f5f9; }
+      p, li { line-height: 1.75; color: rgba(226,232,240,.92); }
+      ul { padding-left: 20px; }
+      li { margin-bottom: 6px; }
       .muted { color: rgba(148,163,184,.95); }
-      .cta { margin-top: 28px; padding: 18px; border-radius: 20px; border: 1px solid rgba(59,130,246,.25); background: rgba(37,99,235,.12); }
-      .btn { display:inline-block; margin-top: 10px; padding: 10px 14px; border-radius: 14px; background:#2563eb; color:#fff; font-weight: 700; }
+      .label { text-transform:uppercase; font-weight:900; letter-spacing:.12em; font-size:11px; color:rgba(148,163,184,.8); }
+      .cta-end { margin-top: 40px; padding: 24px 28px; border-radius: 20px; border: 1px solid rgba(59,130,246,.3); background: rgba(37,99,235,.1); }
+      .cta-end h3 { margin: 0 0 8px; font-size: 20px; color: #f1f5f9; }
+      .cta-end p { margin: 0 0 16px; color: rgba(148,163,184,.95); }
+      .btn { display:inline-block; padding: 12px 22px; border-radius: 14px; background:#2563eb; color:#fff; font-weight: 700; font-size: 15px; }
       .btn:hover { text-decoration:none; background:#3b82f6; }
-      .toplink { display:inline-block; margin-bottom: 16px; }
-      footer { margin-top: 40px; }
+      .toplink { display:inline-block; margin-bottom: 20px; font-size: 14px; }
+      .inline-cta { margin: 28px 0; padding: 18px 22px; border-radius: 16px; border: 1px solid rgba(59,130,246,.2); background: rgba(37,99,235,.07); }
+      .inline-cta p { margin: 6px 0 12px; }
+      footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid rgba(51,65,85,.4); }
+      @media (max-width: 600px) {
+        h1 { font-size: 24px; }
+        .card { padding: 20px; }
+      }
     </style>
   </head>
 
@@ -45,50 +81,81 @@
       <a class="toplink muted" href="/">← Back to StrengthInsight</a>
 
       <div class="card">
-        <h1>How to See WHOOP Strength Trainer Progression (and Track Improvements Over Time)</h1>
-        <p class="muted">WHOOP Strength Trainer is great for logging lifting sessions, but long-term progression isn’t always obvious. Here’s how to track it clearly.</p>
+        <p class="label">Strength Tracking Guide</p>
+        <h1>How to Actually Track Your Strength Progression with WHOOP Strength Trainer</h1>
+        <p class="muted">WHOOP Strength Trainer is great for logging sessions — but if you've ever tried to answer "am I actually getting stronger?", you've probably hit a wall. Here's what's missing and how to fill the gap.</p>
 
         <h2>What WHOOP Strength Trainer shows today</h2>
+        <p>WHOOP does a genuinely useful job of capturing your strength sessions. After a workout, the Strength Trainer screen shows:</p>
         <ul>
-          <li>A record of your workouts (exercises, sets, reps, weight where available)</li>
-          <li>Session-level summaries (what you did in that workout)</li>
-          <li>Useful context alongside recovery and strain</li>
+          <li>A record of exercises, sets, reps, and weight (where you've entered them)</li>
+          <li>Session-level summaries and strain scores</li>
+          <li>Useful context alongside your recovery data and heart rate</li>
+        </ul>
+        <p>That session-level view is great for reviewing what you just did. The problem is when you want to look further back — and further forward.</p>
+
+        <h2>The gap WHOOP doesn't fill</h2>
+        <p>Here's the thing WHOOP Strength Trainer doesn't do well: it doesn't show you whether your <em>bench press</em> has improved over the last 8 weeks. The history exists inside WHOOP — it's just buried, session by session, with no way to visualise it as a trend.</p>
+        <p>You can scroll back through past workouts manually, but there's no chart showing your bench press max week over week. No view that tells you whether your squat volume has been climbing or flat-lining. No alert that you've been stuck at the same weight for four sessions in a row.</p>
+        <p>This is the core gap: WHOOP is excellent at strain and recovery — which is a physiological layer. But strength progression is a mechanical layer that requires tracking load, reps, and volume <em>across time per exercise</em>. Without that, you're flying somewhat blind on whether your programming is working.</p>
+
+        <h2>What progression tracking actually looks like</h2>
+        <p>Useful strength progression data has a few core elements. If you can see all of these for each of your main lifts, you can make genuinely informed decisions about your training:</p>
+        <ul>
+          <li><strong>Estimated 1RM trend over time</strong> — the best single number for tracking whether a lift is improving. An <a href="https://strengthinsight.app">estimated 1RM trend</a> uses your best set each session (weight × reps via the Epley formula) to produce a smoothed picture of your strength. A flat line for 4+ weeks is a plateau; a rising line is progress.</li>
+          <li><strong>Best set per session</strong> — heaviest single set weight, tracked week to week. Simple and direct.</li>
+          <li><strong>Volume per session</strong> — total reps × weight for the exercise. Volume trends tell you whether you're doing more total work, even if your max load hasn't moved yet.</li>
+          <li><strong>Plateau detection</strong> — an alert when your peak load and volume have been within a few percent of each other for the last 4 sessions. This is the signal to change something.</li>
+        </ul>
+        <p>To put this concretely: seeing that your bench press estimated 1RM has been flat for 4 weeks is actionable — you know you need to adjust load, volume, or recovery. Knowing your session strain was 12.3 tells you how hard you worked that day, but not whether you're getting stronger. Both matter; you just need both layers.</p>
+
+        <h2>How StrengthInsight fills this gap</h2>
+        <p>StrengthInsight is a lightweight companion built specifically for this missing layer. The flow is simple:</p>
+        <ul>
+          <li>After a session, <a href="https://strengthinsight.app">upload a screenshot</a> from your WHOOP Strength Trainer (or Hevy) — just a standard screenshot from your phone</li>
+          <li>AI extracts every set, rep, and weight automatically — no manual entry</li>
+          <li>Your progression charts update immediately: estimated 1RM trend, session volume, PR tracking, plateau alerts</li>
+        </ul>
+        <p>Within a few uploads you start to see your lift histories as actual trends — not just individual session snapshots. After 4–6 weeks of consistent uploads, the plateau detection starts firing on exercises that have genuinely stalled, and the PR drought tracker shows you exactly how many days it's been since you hit a personal best on each lift.</p>
+
+        <div class="inline-cta">
+          <p class="label">Try it now</p>
+          <p>Upload your last 2–3 WHOOP or Hevy sessions and see your progression charts in under 60 seconds.</p>
+          <a class="btn" href="https://strengthinsight.app">Start Tracking Free →</a>
+        </div>
+
+        <h2>What the data shows over time</h2>
+        <p>Most users who track consistently for 6–10 weeks start to see patterns they genuinely couldn't see before. Volume trends on compound lifts tend to be the first thing that becomes clear — you can see whether squats or deadlifts are actually getting more work week over week, or whether certain exercises are getting quietly dropped.</p>
+        <p>The plateau detection tends to fire most usefully on accessory lifts. It's easy to plateau on something like lateral raises or tricep pushdowns for weeks without noticing — because you're focused on the big compounds — and then wonder why your shoulders or arms aren't responding. A consistent log makes this visible in a way that WHOOP alone doesn't.</p>
+        <p>For lifters who train 3–4 days a week, around 8–12 uploads gets you enough data to see a meaningful trend on your main movements. After 10 weeks you can start to see which training blocks worked and which didn't — not based on how hard your sessions felt, but on what the actual numbers did.</p>
+
+        <h2>Why progression can look flat even when you're working hard</h2>
+        <p>A few common reasons the data looks stuck, even if training is consistent:</p>
+        <ul>
+          <li><strong>Missing data</strong> — if weights or reps aren't recorded in WHOOP consistently, the trend lines have gaps that make progress invisible</li>
+          <li><strong>Too much exercise variation</strong> — rotating exercises frequently means fewer data points per movement, so trends take longer to emerge</li>
+          <li><strong>No baseline comparisons</strong> — without a tool that shows "last 3 sessions vs. prior 3 sessions," a plateau can go unnoticed for weeks</li>
+          <li><strong>Recovery and fatigue masking performance</strong> — a bad week can look like a regression when it's just fatigue; the trend over 6–8 weeks is more reliable than any single session</li>
         </ul>
 
-        <h2>The missing piece: “progression over time”</h2>
-        <p>Progression usually means: are lifts increasing, is weekly volume trending up, and are muscle groups staying balanced over weeks and months.</p>
-
-        <h2>The easiest way to track progression with WHOOP data</h2>
-        <h3>1) Track weekly volume</h3>
-        <p><strong>Weekly volume = Σ (reps × weight)</strong> across all sets in that week. Watch the 4–8 week trend, not daily noise.</p>
-
-        <h3>2) Track top sets for 3–5 key lifts</h3>
-        <p>Pick a small set of core movements and track your best set each week. Look for higher load at the same reps or more reps at the same load.</p>
-
-        <h2>Why progression can look “flat”</h2>
-        <ul>
-          <li>Missing tracking data (weights/reps)</li>
-          <li>Too much exercise variation</li>
-          <li>No weekly baseline comparisons</li>
-          <li>Recovery/fatigue masking performance</li>
-        </ul>
-
-        <div class="cta">
-          <div class="muted" style="text-transform:uppercase; font-weight:900; letter-spacing:.12em; font-size:12px;">Tip</div>
-          <div style="font-weight:800; font-size:18px; margin-top:6px;">
-            Want clearer progression trends from your Strength Trainer history?
-          </div>
-          <p class="muted" style="margin:8px 0 0;">
-            StrengthInsight is a lightweight companion focused on strength progression and trend views.
-          </p>
-          <a class="btn" href="/">View StrengthInsight</a>
-          <p class="muted" style="margin:10px 0 0; font-size:13px;">
-            Most users get meaningful trends after uploading three recent Strength Trainer workouts.
-          </p>
+        <!-- End-of-post CTA -->
+        <div class="cta-end">
+          <p class="label">📈 Ready to see if you're actually getting stronger?</p>
+          <h3>Upload your first WHOOP or Hevy screenshot</h3>
+          <p>Get your progression charts in under 60 seconds. Free while in beta — no credit card required.</p>
+          <a
+            class="btn"
+            href="https://strengthinsight.app"
+            onclick="if(window.gtag) gtag('event', 'blog_cta_clicked', { post: 'whoop-strength-trainer-progression', location: 'end_of_post' })"
+          >
+            Start Tracking Free →
+          </a>
         </div>
 
         <footer class="muted">
-          <p style="margin:0;">More guides coming soon.</p>
+          <p style="margin:0;">
+            Related: <a href="/blog/can-i-access-whoop-strength-trainer-data/">Can I access WHOOP Strength Trainer data?</a>
+          </p>
         </footer>
       </div>
     </div>
