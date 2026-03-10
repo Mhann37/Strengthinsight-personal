@@ -21,6 +21,7 @@ import {
   ShareIcon,
   ChevronDownIcon,
 } from '@heroicons/react/24/solid';
+import { ArrowRightIcon } from '@heroicons/react/24/outline';
 
 // ── What's New banner ──────────────────────────────────────────
 const WHATS_NEW_VERSION = 'v2.0';
@@ -850,6 +851,31 @@ const DashboardV2: React.FC<DashboardV2Props> = ({ workouts, userName, setView }
 
       {/* Coach Insight */}
       <InsightsPanel workouts={workouts} />
+
+      {/* Generate Next Workout CTA */}
+      {workouts.length >= 3 && (
+        <button
+          type="button"
+          onClick={() => setView('generate')}
+          className="w-full text-left bg-slate-900 border border-slate-800 rounded-2xl p-5 hover:border-blue-500/40 hover:bg-slate-800/60 transition-all group active:scale-[0.99]"
+        >
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-xl bg-blue-600/15 border border-blue-500/20 flex items-center justify-center shrink-0 group-hover:bg-blue-600/25 transition-colors">
+                <BoltIcon className="w-5 h-5 text-blue-400" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-slate-200 leading-tight">Next Workout</p>
+                <p className="text-xs text-slate-500 mt-0.5">AI-generated from your last 5 sessions</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-bold shrink-0 group-hover:bg-blue-500 transition-colors">
+              Generate
+              <ArrowRightIcon className="w-3.5 h-3.5" />
+            </div>
+          </div>
+        </button>
+      )}
 
       {/* Share Card Modal */}
       {showShareCard && (

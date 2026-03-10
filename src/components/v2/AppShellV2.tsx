@@ -14,6 +14,7 @@ import UploadWrapperV2 from './UploadWrapperV2';
 import BodyweightV2 from './BodyweightV2';
 import CalendarV2 from './CalendarV2';
 import HistoryV2 from './HistoryV2';
+import WorkoutGenerator from './WorkoutGenerator';
 
 // V1 components reused in V2
 import MuscleGroups from '../../../components/MuscleGroups';
@@ -34,6 +35,7 @@ import {
   Bars3Icon,
   CalendarDaysIcon,
   ScaleIcon,
+  BoltIcon,
 } from '@heroicons/react/24/outline';
 
 export type V2View =
@@ -45,7 +47,8 @@ export type V2View =
   | 'export'
   | 'settings'
   | 'calendar'
-  | 'body';
+  | 'body'
+  | 'generate';
 
 interface AppShellV2Props {
   user: User;
@@ -103,6 +106,7 @@ const MoreSheet: React.FC<{
   if (!open) return null;
 
   const items: { id: V2View; label: string; icon: React.ElementType }[] = [
+    { id: 'generate', label: 'Next Workout', icon: BoltIcon },
     { id: 'calendar', label: 'Training History', icon: CalendarDaysIcon },
     { id: 'body', label: 'Body Weight', icon: ScaleIcon },
     { id: 'history', label: 'Workout Logs', icon: ClockIcon },
@@ -308,6 +312,7 @@ const AppShellV2: React.FC<AppShellV2Props> = ({
         <nav className="flex-1 space-y-1">
           <SideNavItem id="dashboard" label="Overview" icon={Square2StackIcon} />
           <SideNavItem id="upload" label="Upload Workout" icon={ArrowUpTrayIcon} />
+          <SideNavItem id="generate" label="Next Workout" icon={BoltIcon} />
           <SideNavItem id="analytics" label="Progression" icon={ChartBarIcon} />
           <SideNavItem id="muscleGroups" label="Muscle Groups" icon={UserIcon} isBeta />
           <SideNavItem id="calendar" label="Training History" icon={CalendarDaysIcon} />
@@ -372,6 +377,7 @@ const AppShellV2: React.FC<AppShellV2Props> = ({
             <>
               {view === 'dashboard' && <DashboardV2 workouts={workouts} userName={user.displayName} setView={setView} />}
               {view === 'upload' && <UploadWrapperV2 onWorkoutsExtracted={addWorkouts} existingWorkouts={workouts} />}
+              {view === 'generate' && <WorkoutGenerator workouts={workouts} />}
               {view === 'analytics' && <ProgressionV2 workouts={workouts} latestBodyweightKg={latestBodyweightKg} setView={setView} />}
               {view === 'muscleGroups' && <MuscleGroups workouts={workouts} />}
               {view === 'history' && <HistoryV2 workouts={workouts} onDelete={deleteWorkout} />}
