@@ -116,17 +116,22 @@ const sanitizeWorkoutsForAI = (workouts: Workout[]) => {
     const dt = getWorkoutDate(w);
     return {
       date: dt ? dt.toISOString().slice(0, 10) : (w?.date || null),
-      // Keep only what’s needed for analysis
+      source: w?.source || null,
+      rpe: w?.rpe != null ? Number(w.rpe) : null,
+      recoveryScore: w?.recoveryScore != null ? Number(w.recoveryScore) : null,
+      notes: w?.notes || null,
       exercises: (w?.exercises || []).map((ex: any) => ({
-        name: ex?.name || 'Unknown',
+        name: ex?.name || ‘Unknown’,
         muscleGroup: ex?.muscleGroup || null,
         sets: (ex?.sets || []).map((s: any) => ({
+          setNumber: s?.setNumber != null ? Number(s.setNumber) : null,
           reps: Number(s?.reps) || 0,
-          // export weight in kg for consistency
+          weight: Number(s?.weight) || 0,
+          unit: s?.unit || ‘kg’,
+          // canonical kg weight for cross-session comparisons
           weightKg: toKg(Number(s?.weight) || 0, normalizeUnit(s?.unit)),
         })),
       })),
-      // Helpful derived field
       totalVolumeKg: calcWorkoutVolumeKg(w),
     };
   });
@@ -294,7 +299,7 @@ const Dashboard: React.FC<DashboardProps> = ({ workouts, userName }) => {
     const end = dated.length ? dated[dated.length - 1].d!.toISOString().slice(0, 10) : null;
 
     const exportPayload = {
-      exportVersion: '1.0',
+      exportVersion: '1.1',
       generatedAt: new Date().toISOString(),
       app: 'StrengthInsight',
       unitPreference: unit, // user display unit
@@ -307,10 +312,12 @@ const Dashboard: React.FC<DashboardProps> = ({ workouts, userName }) => {
       workouts: sanitizeWorkoutsForAI(workouts),
       aiPrompt:
         "You are a strength coach and training data analyst. Use ONLY the data in this JSON. " +
+        "Each workout may include: rpe (1-10 effort rating), recoveryScore (0-100 from WHOOP), notes (session notes), source (manual/hevy/whoop). " +
         "1) Summarize weekly training volume trend and consistency. " +
         "2) Identify any muscle-group imbalances (if muscleGroup is present). " +
         "3) Call out plateaus or regressions. " +
-        "4) Give 3 practical focus areas for the next 2 weeks. " +
+        "4) If rpe or recoveryScore data is present, comment on effort vs recovery patterns. " +
+        "5) Give 3 practical focus areas for the next 2 weeks. " +
         "Keep advice realistic and avoid assuming any missing data.",
     };
 
