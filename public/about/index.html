@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+
+    <title>About | StrengthInsight</title>
+    <meta
+      name="description"
+      content="James built StrengthInsight to solve the progression tracking gap in WHOOP Strength Trainer. Here's the story and what the app does."
+    />
+    <link rel="canonical" href="https://strengthinsight.app/about" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="About | StrengthInsight" />
+    <meta
+      property="og:description"
+      content="James built StrengthInsight to solve the progression tracking gap in WHOOP Strength Trainer. Here's the story and what the app does."
+    />
+    <meta property="og:url" content="https://strengthinsight.app/about" />
+    <meta property="og:site_name" content="StrengthInsight" />
+    <meta property="og:image" content="https://strengthinsight.app/og-image.png" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="About | StrengthInsight" />
+    <meta
+      name="twitter:description"
+      content="James built StrengthInsight to solve the progression tracking gap in WHOOP Strength Trainer. Here's the story and what the app does."
+    />
+    <meta name="twitter:image" content="https://strengthinsight.app/og-image.png" />
+
+    <!-- Person schema -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Person",
+      "name": "James",
+      "url": "https://strengthinsight.app/about",
+      "jobTitle": "Founder",
+      "worksFor": {
+        "@type": "Organization",
+        "name": "StrengthInsight",
+        "url": "https://strengthinsight.app"
+      }
+    }
+    </script>
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-PM2Z0X11RC"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-PM2Z0X11RC');
+    </script>
+
+    <style>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
+      body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; background: #070b16; color: #e5e7eb; }
+
+      /* ── Navbar ── */
+      .navbar { background: rgba(9,15,31,.9); border-bottom: 1px solid rgba(51,65,85,.5); backdrop-filter: blur(10px); position: sticky; top: 0; z-index: 40; }
+      .navbar-inner { max-width: 720px; margin: 0 auto; padding: 0 20px; height: 56px; display: flex; align-items: center; justify-content: space-between; }
+      .navbar-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: #f1f5f9; font-weight: 800; font-size: 17px; }
+      .navbar-brand img { width: 30px; height: 30px; border-radius: 8px; object-fit: contain; }
+      .navbar-cta { display: inline-block; padding: 7px 16px; border-radius: 10px; background: #2563eb; color: #fff; font-weight: 700; font-size: 13px; text-decoration: none; }
+      .navbar-cta:hover { background: #3b82f6; }
+
+      /* ── Page ── */
+      .wrap { max-width: 720px; margin: 0 auto; padding: 64px 20px 80px; }
+
+      /* ── Typography ── */
+      h1 { font-size: 36px; font-weight: 900; line-height: 1.1; margin: 0 0 12px; color: #f8fafc; letter-spacing: -.02em; }
+      .subheading { font-size: 20px; color: rgba(148,163,184,.9); margin: 0 0 32px; line-height: 1.4; }
+      h2 { font-size: 15px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: rgba(148,163,184,.7); margin: 36px 0 14px; }
+      p { line-height: 1.8; color: rgba(226,232,240,.88); margin: 0 0 18px; font-size: 16px; }
+      a { color: #60a5fa; text-decoration: none; }
+      a:hover { text-decoration: underline; }
+
+      /* ── Rule ── */
+      .rule { height: 2px; background: linear-gradient(90deg, #3b82f6 0%, rgba(59,130,246,0) 100%); border: none; margin: 0 0 36px; width: 60px; }
+
+      /* ── Feature list ── */
+      .features { margin: 0 0 24px; padding: 0; list-style: none; }
+      .features li { padding: 9px 0 9px 28px; position: relative; color: rgba(226,232,240,.88); font-size: 15px; line-height: 1.6; border-bottom: 1px solid rgba(51,65,85,.3); }
+      .features li:last-child { border-bottom: none; }
+      .features li::before { content: '→'; position: absolute; left: 0; color: #3b82f6; font-weight: 700; }
+
+      /* ── Contact ── */
+      .contact { margin-top: 32px; padding: 20px 24px; border-radius: 16px; border: 1px solid rgba(51,65,85,.5); background: rgba(15,23,42,.6); }
+      .contact p { margin: 0 0 8px; font-size: 14px; color: rgba(148,163,184,.8); }
+      .contact a { font-size: 16px; font-weight: 600; color: #60a5fa; }
+
+      /* ── Footer ── */
+      .footer { margin-top: 64px; padding-top: 24px; border-top: 1px solid rgba(51,65,85,.4); display: flex; flex-wrap: wrap; gap: 16px; font-size: 13px; color: rgba(148,163,184,.6); }
+      .footer a { color: rgba(148,163,184,.6); }
+      .footer a:hover { color: #60a5fa; text-decoration: none; }
+
+      @media (max-width: 600px) {
+        h1 { font-size: 28px; }
+        .subheading { font-size: 17px; }
+        .wrap { padding: 40px 16px 60px; }
+      }
+    </style>
+  </head>
+
+  <body>
+
+    <!-- Navbar -->
+    <nav class="navbar">
+      <div class="navbar-inner">
+        <a class="navbar-brand" href="/">
+          <img src="/icons/icon-120.png" alt="StrengthInsight" />
+          StrengthInsight
+        </a>
+        <a class="navbar-cta" href="/">Open App →</a>
+      </div>
+    </nav>
+
+    <!-- Page content -->
+    <div class="wrap">
+
+      <h1>About StrengthInsight</h1>
+      <p class="subheading">Built to solve a problem WHOOP leaves unsolved.</p>
+      <hr class="rule" />
+
+      <h2>The story</h2>
+      <p>
+        I've been using WHOOP a lot. The recovery data is genuinely useful — but when I started taking strength training seriously, I kept running into the same wall: WHOOP Strength Trainer logs your sessions, but it won't tell you if you're actually getting stronger. There's no exercise-by-exercise progression chart. No way to see if your bench press has improved over 8 weeks. The data is there — it's just not surfaced.
+      </p>
+      <p>
+        I built StrengthInsight to fill that gap. Upload a screenshot after your session, and the app extracts your sets, reps, and weights automatically. From there you get progression charts, PR tracking, plateau detection, and an AI-generated next workout — all based on your actual training history.
+      </p>
+
+      <h2>What the app does</h2>
+      <ul class="features">
+        <li>Screenshot-based data extraction (WHOOP Strength Trainer + Hevy)</li>
+        <li>Per-exercise progression charts and estimated 1RM trends</li>
+        <li>Personal record tracking with PR drought alerts</li>
+        <li>Plateau detection with next weight suggestions</li>
+        <li>Training focus classification (Strength / Hypertrophy / Endurance)</li>
+        <li>AI-generated next workout based on your last 5 sessions</li>
+        <li>Recovery vs performance correlation (once WHOOP recovery data is logged)</li>
+      </ul>
+
+      <h2>A note</h2>
+      <p>
+        StrengthInsight is a solo project. If something's broken, confusing, or missing a feature you need — I want to hear about it.
+      </p>
+
+      <div class="contact">
+        <p>Get in touch</p>
+        <a href="mailto:support@strengthinsight.app">→ support@strengthinsight.app</a>
+      </div>
+
+      <footer class="footer">
+        <a href="/">Home</a>
+        <a href="/blog/whoop-strength-trainer-progression/">Blog</a>
+        <a href="/privacy">Privacy Policy</a>
+        <a href="/terms.html">Terms of Service</a>
+      </footer>
+
+    </div>
+
+  </body>
+</html>

@@ -220,6 +220,9 @@ const Login: React.FC = () => {
                 StrengthInsight is an independent community project and is not affiliated with WHOOP. Upload only your own
                 screenshots.
               </p>
+              <p className="text-xs text-slate-600 text-center mt-2">
+                <a href="/about" className="hover:text-slate-400 transition-colors">About</a>
+              </p>
             </div>
           </div>
         </div>
