@@ -205,7 +205,7 @@ const Login: React.FC = () => {
               </a>{' '}
               and{' '}
               <a
-                href="/privacy.html"
+                href="/privacy"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-blue-400 hover:underline"

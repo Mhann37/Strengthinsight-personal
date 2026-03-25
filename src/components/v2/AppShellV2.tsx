@@ -398,7 +398,7 @@ const AppShellV2: React.FC<AppShellV2Props> = ({
         </div>
 
         <footer className="mt-16 pb-6 text-center text-xs text-slate-500">
-          <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="hover:text-blue-400 transition-colors">Privacy Policy</a>
+          <a href="/privacy" target="_blank" rel="noopener noreferrer" className="hover:text-blue-400 transition-colors">Privacy Policy</a>
         </footer>
       </main>
 

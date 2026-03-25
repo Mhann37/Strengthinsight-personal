@@ -1,0 +1,28 @@
+# StrengthInsight
+
+> StrengthInsight helps WHOOP and Hevy users track lift progression from screenshots. Upload a session screenshot — AI extracts your sets, reps, and weights — and get progression charts, PR tracking, plateau detection, and AI-generated next workouts.
+
+## Key Pages
+
+- Homepage: https://strengthinsight.app/
+- Blog: https://strengthinsight.app/blog/
+
+## Blog Posts
+
+- https://strengthinsight.app/blog/whoop-strength-trainer-progression/
+- https://strengthinsight.app/blog/can-i-access-whoop-strength-trainer-data/
+- https://strengthinsight.app/blog/best-fitness-trackers-for-sleep-and-recovery/
+
+## What StrengthInsight Does
+
+- Extracts workout data (exercises, sets, reps, weights) from WHOOP Strength Trainer and Hevy screenshots using AI
+- Builds per-exercise progression charts and estimated 1RM trends
+- Tracks personal records and detects plateaus
+- Correlates WHOOP recovery scores with lifting performance
+- Generates AI-powered next workout recommendations based on training history
+
+## What StrengthInsight Does Not Do
+
+- Does not require WHOOP API access
+- Does not replace the WHOOP app
+- Does not expose user data to third parties
