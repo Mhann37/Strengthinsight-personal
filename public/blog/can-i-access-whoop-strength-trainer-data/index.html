@@ -4,10 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
 
-    <title>How to Get Your WHOOP Strength Trainer Data Out (What’s Possible in 2026)</title>
+    <title>How to Get Your WHOOP Strength Trainer Data Out (What's Possible in 2026)</title>
     <meta
       name="description"
-      content="WHOOP doesn’t expose strength training data via its API. Here’s what data you can access, what you can’t, and the workaround that actually works."
+      content="WHOOP doesn't expose strength training data via its API. Here's what data you can access, what you can't, and the workaround that actually works."
     />
     <link
       rel="canonical"
@@ -16,15 +16,28 @@
 
     <!-- Open Graph -->
     <meta property="og:type" content="article" />
-    <meta property="og:title" content="How to Get Your WHOOP Strength Trainer Data Out (What’s Possible in 2026)" />
+    <meta property="og:title" content="How to Get Your WHOOP Strength Trainer Data Out (What's Possible in 2026)" />
     <meta
       property="og:description"
-      content="WHOOP doesn’t expose strength training data via its API. Here’s what data you can access, what you can’t, and the workaround that actually works."
+      content="WHOOP doesn't expose strength training data via its API. Here's what data you can access, what you can't, and the workaround that actually works."
     />
     <meta
       property="og:url"
       content="https://strengthinsight.app/blog/can-i-access-whoop-strength-trainer-data/"
     />
+    <meta property="og:site_name" content="StrengthInsight" />
+    <meta property="og:image" content="https://strengthinsight.app/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="How to Get Your WHOOP Strength Trainer Data Out (What's Possible in 2026)" />
+    <meta
+      name="twitter:description"
+      content="WHOOP doesn't expose strength training data via its API. Here's what data you can access, what you can't, and the workaround that actually works."
+    />
+    <meta name="twitter:image" content="https://strengthinsight.app/og-image.png" />
 
     <!-- BlogPosting schema -->
     <script type="application/ld+json">
@@ -32,13 +45,15 @@
       "@context": "https://schema.org",
       "@type": "BlogPosting",
       "headline": "Can You Access Your WHOOP Strength Trainer Data? (2026 Answer)",
-      "description": "WHOOP doesn’t expose strength training data via its API. Here’s what data you can access, what you can’t, and the workaround that actually works.",
+      "description": "WHOOP doesn't expose strength training data via its API. Here's what data you can access, what you can't, and the workaround that actually works.",
       "url": "https://strengthinsight.app/blog/can-i-access-whoop-strength-trainer-data/",
       "datePublished": "2026-01-01",
-      "dateModified": "2026-03-10",
+      "dateModified": "2026-03-25",
+      "image": "https://strengthinsight.app/blog/whoop-data-access-hero.jpg",
       "author": {
-        "@type": "Organization",
-        "name": "StrengthInsight"
+        "@type": "Person",
+        "name": "James",
+        "url": "https://strengthinsight.app/about"
       },
       "publisher": {
         "@type": "Organization",
@@ -48,13 +63,41 @@
     }
     </script>
 
+    <!-- BreadcrumbList schema -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://strengthinsight.app/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Blog",
+          "item": "https://strengthinsight.app/blog/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Can You Access Your WHOOP Strength Trainer Data?",
+          "item": "https://strengthinsight.app/blog/can-i-access-whoop-strength-trainer-data/"
+        }
+      ]
+    }
+    </script>
+
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-PM2Z0X11RC"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
-      gtag(‘js’, new Date());
-      gtag(‘config’, ‘G-PM2Z0X11RC’);
+      gtag('js', new Date());
+      gtag('config', 'G-PM2Z0X11RC');
     </script>
 
     <style>
@@ -64,11 +107,13 @@
       a { color:#60a5fa; text-decoration:none; }
       a:hover { text-decoration:underline; }
       .card { background: rgba(15,23,42,.7); border: 1px solid rgba(51,65,85,.6); border-radius: 24px; padding: 22px; }
-      h1 { font-size: 34px; line-height: 1.1; margin: 0 0 12px; }
+      h1 { font-size: 34px; line-height: 1.1; margin: 0 0 8px; }
       h2 { font-size: 22px; margin: 28px 0 10px; }
       h3 { font-size: 16px; margin: 18px 0 8px; color: rgba(226,232,240,.98); }
       p, li { line-height: 1.7; color: rgba(226,232,240,.92); }
       .muted { color: rgba(148,163,184,.95); }
+      .byline { font-size: 13px; color: rgba(148,163,184,.8); margin: 0 0 20px; }
+      .hero { width: 100%; height: auto; border-radius: 14px; margin-bottom: 24px; display: block; }
       .cta { margin-top: 26px; padding: 18px; border-radius: 20px; border: 1px solid rgba(59,130,246,.25); background: rgba(37,99,235,.12); }
       .btn { display:inline-block; margin-top: 10px; padding: 10px 14px; border-radius: 14px; background:#2563eb; color:#fff; font-weight: 700; }
       .btn:hover { text-decoration:none; background:#3b82f6; }
@@ -82,6 +127,13 @@
       .label { text-transform:uppercase; font-weight:900; letter-spacing:.12em; font-size:11px; color:rgba(148,163,184,.8); }
       .btn-end { display:inline-block; padding: 12px 22px; border-radius: 14px; background:#2563eb; color:#fff; font-weight: 700; font-size: 15px; }
       .btn-end:hover { text-decoration:none; background:#3b82f6; }
+      table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+      th { text-align: left; padding: 10px 12px; background: rgba(2,6,23,.6); color: #f1f5f9; font-weight: 700; border-bottom: 1px solid rgba(51,65,85,.6); }
+      td { padding: 9px 12px; border-bottom: 1px solid rgba(51,65,85,.35); color: rgba(226,232,240,.85); }
+      tr:last-child td { border-bottom: none; }
+      td:first-child { font-weight: 600; color: #f1f5f9; }
+      .check { color: #34d399; }
+      .cross { color: rgba(148,163,184,.6); }
     </style>
   </head>
 
@@ -91,19 +143,53 @@
 
       <div class="card">
         <h1>Can You Access Your WHOOP Strength Trainer Data? (2026 Answer)</h1>
+        <p class="byline">By James · Founder, StrengthInsight · January 2026</p>
+
+        <img
+          src="/blog/whoop-data-access-hero.jpg"
+          alt="WHOOP app showing Strength Trainer session next to StrengthInsight progression dashboard"
+          width="1200"
+          height="630"
+          loading="eager"
+          class="hero"
+        />
+
         <p class="muted">
-          Short answer: WHOOP’s API exposes recovery scores, HRV, and sleep — but not your sets, reps, or weights from Strength Trainer. That data exists inside WHOOP, but they don’t share it. Here’s what you can access, what you can’t, and the screenshot-based workaround that fills the gap.
+          Short answer: WHOOP's API exposes recovery scores, HRV, and sleep — but not your sets, reps, or weights from Strength Trainer. That data exists inside WHOOP, but they don't share it. Here's what you can access, what you can't, and the screenshot-based workaround that fills the gap.
         </p>
 
-        <h2>What “access” means (and what most people want)</h2>
+        <h2>What "access" means (and what most people want)</h2>
         <p>
-          Most users aren’t looking for raw sensor streams — they’re looking for practical strength information:
+          Most users aren't looking for raw sensor streams — they're looking for practical strength information:
         </p>
         <ul>
           <li>Your workout history (dates, exercises, sets, reps, weight)</li>
           <li>Trends like weekly volume and muscle-group balance</li>
           <li>A way to review progression outside the session-by-session view</li>
         </ul>
+
+        <h2>What the WHOOP API Actually Exposes</h2>
+        <p>
+          WHOOP has a developer API. Here's what it does and doesn't expose:
+        </p>
+        <p><strong>Available via API:</strong></p>
+        <ul>
+          <li>Recovery score (0–100)</li>
+          <li>HRV (heart rate variability)</li>
+          <li>Resting heart rate</li>
+          <li>Sleep performance and duration</li>
+          <li>Day strain score</li>
+          <li>Workout strain (effort score only — not exercise detail)</li>
+        </ul>
+        <p><strong>Not available via API:</strong></p>
+        <ul>
+          <li>Exercise names from Strength Trainer</li>
+          <li>Sets, reps, or weights logged</li>
+          <li>Individual lift history</li>
+        </ul>
+        <p>
+          WHOOP has this data internally. They don't expose it through the API. This has been an open request in the WHOOP developer community since Strength Trainer launched, with no official response from WHOOP as of early 2026.
+        </p>
 
         <h2>What WHOOP provides today</h2>
         <p>
@@ -113,16 +199,82 @@
         <ul>
           <li><strong>In-app history:</strong> You can view past strength sessions and exercise details.</li>
           <li><strong>Exports / sharing:</strong> Export options vary and may not include every strength-specific field in a clean format.</li>
-          <li><strong>Programmatic access:</strong> Availability depends on official APIs and what endpoints/fields are exposed.</li>
+          <li><strong>Programmatic access:</strong> Availability depends on official APIs and what endpoints/fields are exposed — and as noted above, strength session detail is not exposed.</li>
         </ul>
 
         <div class="hr"></div>
+
+        <h2>Comparison: What each route gives you</h2>
+        <table>
+          <thead>
+            <tr>
+              <th></th>
+              <th>WHOOP App</th>
+              <th>WHOOP API</th>
+              <th>StrengthInsight</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Recovery score</td>
+              <td class="check">✓</td>
+              <td class="check">✓</td>
+              <td class="muted">Via WHOOP (coming)</td>
+            </tr>
+            <tr>
+              <td>Session strain</td>
+              <td class="check">✓</td>
+              <td class="check">✓</td>
+              <td class="cross">—</td>
+            </tr>
+            <tr>
+              <td>Exercise names</td>
+              <td class="check">✓</td>
+              <td class="cross">✗</td>
+              <td class="check">✓ (screenshot)</td>
+            </tr>
+            <tr>
+              <td>Sets / reps / weight</td>
+              <td class="check">✓</td>
+              <td class="cross">✗</td>
+              <td class="check">✓ (screenshot)</td>
+            </tr>
+            <tr>
+              <td>Lift progression charts</td>
+              <td class="cross">✗</td>
+              <td class="cross">✗</td>
+              <td class="check">✓</td>
+            </tr>
+            <tr>
+              <td>PR tracking</td>
+              <td class="cross">✗</td>
+              <td class="cross">✗</td>
+              <td class="check">✓</td>
+            </tr>
+            <tr>
+              <td>Recovery vs lift correlation</td>
+              <td class="cross">✗</td>
+              <td class="cross">✗</td>
+              <td class="check">✓</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="hr"></div>
+
+        <h2>The Screenshot Workaround</h2>
+        <p>
+          Until WHOOP opens up the Strength Trainer data, the practical workaround is screenshot-based extraction. After each session, take a screenshot of the Strength Trainer summary. Upload it to <a href="https://strengthinsight.app">StrengthInsight</a> — AI reads the sets, reps, and weights automatically and adds them to your lift history. No API access needed.
+        </p>
+        <p>
+          This works because WHOOP's Strength Trainer screen displays structured data (exercise name, sets, reps, weight) that AI can reliably extract. It's not a hack — it's reading data that's already on your screen.
+        </p>
 
         <h2>Practical ways to get Strength Trainer data out</h2>
 
         <h3>1) Manual capture (fastest for progression)</h3>
         <p>
-          If your goal is simply to see progression trends, the fastest “export” is often just capturing the workout
+          If your goal is simply to see progression trends, the fastest "export" is often just capturing the workout
           summary details you already see — enough to compute weekly volume and trends.
         </p>
         <ul>
@@ -147,18 +299,18 @@
         </p>
         <ul>
           <li>Pros: most scalable and automatable</li>
-          <li>Cons: requires developer effort and depends on what WHOOP actually exposes</li>
+          <li>Cons: requires developer effort and depends on what WHOOP actually exposes — currently not strength detail</li>
         </ul>
 
         <h2>What to do if your real goal is progression</h2>
         <p>
-          If what you want is “am I improving?”, you don’t need perfect data export to start. A small slice of recent
+          If what you want is "am I improving?", you don't need perfect data export to start. A small slice of recent
           workouts is enough to generate useful trend views like:
         </p>
         <ul>
           <li><strong>Weekly volume</strong> (reps × weight)</li>
           <li><strong>Muscle group balance</strong> (chest/back/legs etc.)</li>
-          <li><strong>Consistency</strong> (how regularly you’re training each group)</li>
+          <li><strong>Consistency</strong> (how regularly you're training each group)</li>
         </ul>
 
         <div class="cta">
@@ -179,8 +331,7 @@
 
         <h3>Can I export WHOOP Strength Trainer workouts to a spreadsheet?</h3>
         <p>
-          Sometimes — depending on what export format is available to your account. Even when you can export, strength
-          workouts may need cleanup or mapping to be useful for progression.
+          Not directly. WHOOP doesn't offer a CSV export for Strength Trainer sessions. The closest option is exporting via screenshots and using a tool like <a href="https://strengthinsight.app">StrengthInsight</a> to extract and store the data in a queryable format.
         </p>
 
         <h3>Is there a simple way to see progression without exporting everything?</h3>
@@ -191,19 +342,30 @@
 
         <h3>Will WHOOP add more strength data access over time?</h3>
         <p>
-          Possibly. Platforms evolve — but relying on “future features” is frustrating if you want progression visibility
+          Possibly. Platforms evolve — but relying on "future features" is frustrating if you want progression visibility
           today. Start with the data you can access now and refine later.
+        </p>
+
+        <h3>Will WHOOP ever expose Strength Trainer data via API?</h3>
+        <p>
+          As of early 2026, WHOOP hasn't announced any plans to expose Strength Trainer sets/reps/weights via the developer API. The request exists in the community but has had no official response.
+        </p>
+
+        <h3>Does Hevy have the same API limitation?</h3>
+        <p>
+          No — Hevy has a more open API that exposes workout history including exercises, sets, reps, and weights. If API access to your strength data matters to you, Hevy is the more open option. StrengthInsight supports both.
         </p>
 
         <!-- End-of-post CTA -->
         <div class="cta-end">
-          <p class="label">📈 The workaround that actually works</p>
+          <p class="label">📊 The workaround that actually works</p>
           <h3>Upload a WHOOP screenshot — see your lift progression instantly</h3>
           <p>No API needed. StrengthInsight extracts your sets, reps, and weights from a screenshot and builds progression charts automatically. Free to start.</p>
+          <p>Track your WHOOP lift progression without needing API access — upload a screenshot at <a href="https://strengthinsight.app">StrengthInsight.app</a>.</p>
           <a
             class="btn-end"
             href="https://strengthinsight.app"
-            onclick="if(window.gtag) gtag('event', 'blog_cta_clicked', { post: 'can-i-access-whoop-strength-trainer-data', location: 'end_of_post' })"
+            onclick="if(window.gtag) gtag('event', 'blog_cta_clicked', { post: 'can-i-access-whoop-data', location: 'end_of_post' })"
           >
             Start Tracking Free →
           </a>
