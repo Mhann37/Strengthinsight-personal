@@ -7,6 +7,7 @@ import { getSessionFocusClassification, type FocusClassification } from '../../u
 import WeeklyHeatMap from '../../../components/WeeklyHeatMap';
 import InsightsPanel from '../../../components/InsightsPanel';
 import ShareCardCanvas from './ShareCardCanvas';
+import WHOOPDashboardComponent from './WHOOPDashboard';
 import type { V2View } from './AppShellV2';
 import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, Legend,
@@ -661,6 +662,9 @@ const DashboardV2: React.FC<DashboardV2Props> = ({ workouts, userName, setView }
           </button>
         )}
       </header>
+
+      {/* WHOOP Health Metrics Dashboard */}
+      <WHOOPDashboardComponent />
 
       <WhatsNewBanner />
 
