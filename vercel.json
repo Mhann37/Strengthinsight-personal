@@ -6,24 +6,12 @@
   "framework": "vite",
   "public": true,
   "env": {
-    "VITE_FIREBASE_API_KEY": {
-      "description": "Firebase API Key"
-    },
-    "VITE_FIREBASE_AUTH_DOMAIN": {
-      "description": "Firebase Auth Domain"
-    },
-    "VITE_FIREBASE_PROJECT_ID": {
-      "description": "Firebase Project ID"
-    },
-    "VITE_FIREBASE_STORAGE_BUCKET": {
-      "description": "Firebase Storage Bucket"
-    },
-    "VITE_FIREBASE_MESSAGING_SENDER_ID": {
-      "description": "Firebase Messaging Sender ID"
-    },
-    "VITE_FIREBASE_APP_ID": {
-      "description": "Firebase App ID"
-    }
+    "VITE_FIREBASE_API_KEY": "@vite_firebase_api_key",
+    "VITE_FIREBASE_AUTH_DOMAIN": "@vite_firebase_auth_domain",
+    "VITE_FIREBASE_PROJECT_ID": "@vite_firebase_project_id",
+    "VITE_FIREBASE_STORAGE_BUCKET": "@vite_firebase_storage_bucket",
+    "VITE_FIREBASE_MESSAGING_SENDER_ID": "@vite_firebase_messaging_sender_id",
+    "VITE_FIREBASE_APP_ID": "@vite_firebase_app_id"
   },
   "routes": [
     {
